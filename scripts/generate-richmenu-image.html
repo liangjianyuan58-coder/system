@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rich Menu Image Generator</title>
+  <style>
+    body { margin: 20px; font-family: sans-serif; }
+    canvas { border: 1px solid #ccc; display: block; margin: 20px 0; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>LINE Rich Menu 画像生成</h1>
+  <p>下のボタンを押すとPNG画像がダウンロードされます。それをLINE APIにアップロードしてください。</p>
+  <canvas id="canvas" width="2500" height="1686"></canvas>
+  <button onclick="download()">PNGをダウンロード</button>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // 背景
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, 2500, 1686);
+
+    // グリッド線
+    ctx.strokeStyle = '#16213e';
+    ctx.lineWidth = 4;
+    // 横線（中央）
+    ctx.beginPath();
+    ctx.moveTo(0, 843);
+    ctx.lineTo(2500, 843);
+    ctx.stroke();
+    // 縦線
+    ctx.beginPath();
+    ctx.moveTo(833, 0);
+    ctx.lineTo(833, 1686);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(1667, 0);
+    ctx.lineTo(1667, 1686);
+    ctx.stroke();
+
+    // ボタン描画
+    const buttons = [
+      // 上段
+      { x: 0, y: 0, w: 833, h: 843, emoji: '📝', label: '7ステップ', sub: '採点' , color: '#e94560' },
+      { x: 833, y: 0, w: 834, h: 843, emoji: '📖', label: 'お手本', sub: 'スクリプト', color: '#0f3460' },
+      { x: 1667, y: 0, w: 833, h: 843, emoji: '❓', label: '逆質問', sub: 'チェック', color: '#533483' },
+      // 下段
+      { x: 0, y: 843, w: 833, h: 843, emoji: '💪', label: 'こじつけ', sub: '力FB', color: '#e94560' },
+      { x: 833, y: 843, w: 834, h: 843, emoji: '🔄', label: 'リフレーム', sub: 'ジム', color: '#0f3460' },
+      { x: 1667, y: 843, w: 833, h: 843, emoji: '📋', label: 'ヘルプ', sub: '使い方', color: '#533483' },
+    ];
+
+    buttons.forEach(btn => {
+      const cx = btn.x + btn.w / 2;
+      const cy = btn.y + btn.h / 2;
+
+      // ボタン背景（角丸風）
+      const pad = 30;
+      ctx.fillStyle = btn.color;
+      ctx.globalAlpha = 0.3;
+      roundRect(ctx, btn.x + pad, btn.y + pad, btn.w - pad * 2, btn.h - pad * 2, 20);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // 枠線
+      ctx.strokeStyle = btn.color;
+      ctx.lineWidth = 3;
+      roundRect(ctx, btn.x + pad, btn.y + pad, btn.w - pad * 2, btn.h - pad * 2, 20);
+      ctx.stroke();
+
+      // 絵文字
+      ctx.font = '120px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(btn.emoji, cx, cy - 80);
+
+      // メインラベル
+      ctx.font = 'bold 80px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(btn.label, cx, cy + 60);
+
+      // サブラベル
+      ctx.font = '50px sans-serif';
+      ctx.fillStyle = '#aaaaaa';
+      ctx.fillText(btn.sub, cx, cy + 140);
+    });
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function download() {
+      const link = document.createElement('a');
+      link.download = 'richmenu.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
+</html>
