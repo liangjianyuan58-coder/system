@@ -7,7 +7,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getModule, MODULE_LIST } from '@/lib/havefun-data';
+import { getModule, MODULE_CATEGORIES, MODULES } from '@/lib/havefun-data';
 import { getOrCreateUserId, loadName, saveName } from '@/lib/identity';
 import OutputTrainer from './components/OutputTrainer';
 import ReframeGym from './components/ReframeGym';
@@ -50,10 +50,17 @@ export default function Page() {
           <h1 className="app-header__title">{MODULE.manual.title}</h1>
           <div className="app-header__reading">{MODULE.manual.reading}</div>
           <nav className="module-selector">
-            {MODULE_LIST.map((m) => (
-              <button key={m.id} className={'module-btn' + (activeModule === m.id ? ' active' : '')} onClick={() => setActiveModule(m.id)}>
-                {m.title}
-              </button>
+            {MODULE_CATEGORIES.map((cat) => (
+              <div key={cat.label} className="module-category">
+                <span className="module-category__label">{cat.label}</span>
+                <div className="module-category__btns">
+                  {cat.modules.map((id) => (
+                    <button key={id} className={'module-btn' + (activeModule === id ? ' active' : '')} onClick={() => setActiveModule(id)}>
+                      {MODULES[id].manual.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
         </header>

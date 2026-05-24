@@ -116,13 +116,19 @@ body {
 }
 
 /* ===== モードタブ ===== */
-/* ===== モジュール切り替え ===== */
-.module-selector { display: flex; gap: 6px; margin-top: 10px; justify-content: center; }
+/* ===== モジュール切り替え（3段カテゴリ） ===== */
+.module-selector { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.module-category { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.module-category__label {
+  font-family: 'DotGothic16', monospace; font-size: 11px;
+  color: var(--accent); white-space: nowrap; min-width: 80px;
+}
+.module-category__btns { display: flex; gap: 5px; flex-wrap: wrap; }
 .module-btn {
-  font-family: 'DotGothic16', monospace; font-size: 12px;
+  font-family: 'DotGothic16', monospace; font-size: 11px;
   color: var(--dim); background: transparent;
   border: 1px solid rgba(255,255,255,.3); border-radius: 4px;
-  padding: 5px 10px; cursor: pointer; transition: all .15s;
+  padding: 4px 8px; cursor: pointer; transition: all .15s;
 }
 .module-btn.active { color: #000; background: var(--green); border-color: var(--green); font-weight: bold; }
 .module-btn:not(.active):hover { border-color: var(--fg); color: var(--fg); }
