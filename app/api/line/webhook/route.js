@@ -13,23 +13,28 @@ import { getSession, setSession, clearSession, cleanupSessions } from '@/lib/lin
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// ── モジュール Quick Reply 生成 ──
-function moduleQuickReplyItems(commandPrefix) {
-  const items = [];
-  for (const cat of MODULE_CATEGORIES) {
-    for (const mid of cat.modules) {
-      const mod = MODULES[mid];
-      if (!mod) continue;
-      items.push({
-        label: mod.manual.title,
-        data: `${commandPrefix}:${mid}`,
-        displayText: `${mod.manual.title}`,
-      });
-      if (items.length >= 13) break; // Quick Reply上限13個
-    }
-    if (items.length >= 13) break;
-  }
-  return items;
+// ── カテゴリ Quick Reply 生成（1段階目）──
+function categoryQuickReplyItems(commandPrefix) {
+  return MODULE_CATEGORIES.map((cat) => ({
+    label: cat.label,
+    data: `${commandPrefix}_cat:${cat.label}`,
+    displayText: cat.label,
+  }));
+}
+
+// ── カテゴリ内モジュール Quick Reply 生成（2段階目）──
+function modulesInCategory(commandPrefix, categoryLabel) {
+  const cat = MODULE_CATEGORIES.find((c) => c.label === categoryLabel);
+  if (!cat) return [];
+  return cat.modules.map((mid) => {
+    const mod = MODULES[mid];
+    if (!mod) return null;
+    return {
+      label: mod.manual.title,
+      data: `${commandPrefix}:${mid}`,
+      displayText: mod.manual.title,
+    };
+  }).filter(Boolean);
 }
 
 // ── 7ステップ入力テンプレート ──
@@ -173,6 +178,24 @@ async function handleEvent(ev) {
 // ── ポストバック処理 ──
 async function handlePostback(ev, userId) {
   const data = ev.postback?.data || '';
+
+  // カテゴリ選択の処理（grade_cat:マインドセット 等）
+  if (data.includes('_cat:')) {
+    const [cmdWithCat, categoryLabel] = data.split('_cat:');
+    const commandPrefix = cmdWithCat; // "grade", "model", "reverse"
+    const items = modulesInCategory(commandPrefix, categoryLabel);
+    if (items.length === 0) {
+      await replyText(ev.replyToken, 'カテゴリが見つかりません。もう一度やり直してください。');
+      return;
+    }
+    const msg = textWithQuickReply(
+      `【${categoryLabel}】モジュールを選んでください：`,
+      items
+    );
+    await replyMessages(ev.replyToken, [msg]);
+    return;
+  }
+
   const [command, moduleId] = data.split(':');
 
   if (!moduleId || !MODULES[moduleId]) {
@@ -228,9 +251,9 @@ async function handleText(ev, userId) {
 
   // #採点
   if (/^[#＃]採点/.test(text)) {
-    const items = moduleQuickReplyItems('grade');
+    const items = categoryQuickReplyItems('grade');
     const msg = textWithQuickReply(
-      '📝 採点するモジュールを選んでください：',
+      '📝 カテゴリを選んでください：',
       items
     );
     await replyMessages(ev.replyToken, [msg]);
@@ -239,9 +262,9 @@ async function handleText(ev, userId) {
 
   // #お手本
   if (/^[#＃]お手本/.test(text)) {
-    const items = moduleQuickReplyItems('model');
+    const items = categoryQuickReplyItems('model');
     const msg = textWithQuickReply(
-      '📖 お手本を見たいモジュールを選んでください：',
+      '📖 カテゴリを選んでください：',
       items
     );
     await replyMessages(ev.replyToken, [msg]);
@@ -250,9 +273,9 @@ async function handleText(ev, userId) {
 
   // #逆質問
   if (/^[#＃]逆質問/.test(text)) {
-    const items = moduleQuickReplyItems('reverse');
+    const items = categoryQuickReplyItems('reverse');
     const msg = textWithQuickReply(
-      '❓ 逆質問するモジュールを選んでください：',
+      '❓ カテゴリを選んでください：',
       items
     );
     await replyMessages(ev.replyToken, [msg]);
