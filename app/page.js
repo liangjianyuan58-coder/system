@@ -7,21 +7,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getModule } from '@/lib/havefun-data';
+import { getModule, MODULE_LIST } from '@/lib/havefun-data';
 import { getOrCreateUserId, loadName, saveName } from '@/lib/identity';
 import OutputTrainer from './components/OutputTrainer';
 import ReframeGym from './components/ReframeGym';
 import KojitsukeMode from './components/KojitsukeMode';
 import History from './components/History';
 
-const MODULE = getModule();
-
 export default function Page() {
+  const [activeModule, setActiveModule] = useState('havefun');
   const [mode, setMode] = useState('output');
   const [userId, setUserId] = useState('');
   const [name, setName] = useState('');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+
+  const MODULE = getModule(activeModule);
 
   // 起動時にローカルの識別子・名前を読み込み（無ければ名前入力を促す）
   useEffect(() => {
@@ -48,6 +49,13 @@ export default function Page() {
           <div className="app-header__sub">▼ OUTPUT TRAINING</div>
           <h1 className="app-header__title">{MODULE.manual.title}</h1>
           <div className="app-header__reading">{MODULE.manual.reading}</div>
+          <nav className="module-selector">
+            {MODULE_LIST.map((m) => (
+              <button key={m.id} className={'module-btn' + (activeModule === m.id ? ' active' : '')} onClick={() => setActiveModule(m.id)}>
+                {m.title}
+              </button>
+            ))}
+          </nav>
         </header>
 
         {/* プロフィールバー */}
@@ -84,7 +92,7 @@ export default function Page() {
           <button className={'tab' + (mode === 'history' ? ' active' : '')} onClick={() => setMode('history')}>📋 履歴</button>
         </nav>
 
-        {mode === 'output' && <OutputTrainer userId={userId} name={name} onNeedName={() => setEditing(true)} />}
+        {mode === 'output' && <OutputTrainer userId={userId} name={name} moduleId={activeModule} onNeedName={() => setEditing(true)} />}
         {mode === 'reframe' && <ReframeGym />}
         {mode === 'kojitsuke' && <KojitsukeMode />}
         {mode === 'history' && <History userId={userId} name={name} />}

@@ -8,14 +8,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { getModule, STEP_KEYS, calcStats } from '@/lib/havefun-data';
+import { getModule, getStepKeys, calcStats } from '@/lib/havefun-data';
 
-const MODULE = getModule();
-const EMPTY = STEP_KEYS.reduce((o, k) => ((o[k] = ''), o), {});
-const STEP_LABELS = MODULE.steps.reduce((o, s) => ((o[s.key] = s.label), o), {});
-
-export default function OutputTrainer({ userId, name, onNeedName }) {
-  const [values, setValues] = useState(EMPTY);
+export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
+  const MODULE = getModule(moduleId);
+  const stepKeys = getStepKeys(moduleId);
+  const EMPTY_STATE = stepKeys.reduce((o, k) => ((o[k] = ''), o), {});
+  const STEP_LABELS = MODULE.steps.reduce((o, s) => ((o[s.key] = s.label), o), {});
+  const [values, setValues] = useState(EMPTY_STATE);
   const [stats, setStats] = useState(calcStats(0));
   const [streak, setStreak] = useState(0);
   const [doneToday, setDoneToday] = useState(false);
@@ -44,8 +44,13 @@ export default function OutputTrainer({ userId, name, onNeedName }) {
       .catch(() => {});
   }, [userId]);
 
-  const filled = STEP_KEYS.filter((k) => values[k].trim().length > 0).length;
-  const allFilled = filled === STEP_KEYS.length;
+  useEffect(() => {
+    setValues(EMPTY_STATE);
+    setFb(null); setFbError(''); setNote('※ 7項目すべて埋めないと記録できません');
+  }, [moduleId]);
+
+  const filled = stepKeys.filter((k) => values[k].trim().length > 0).length;
+  const allFilled = filled === stepKeys.length;
   const ready = allFilled && !sending;
   const pct = Math.max(0, Math.min(100, (stats.expInLevel / stats.expPerLevel) * 100));
 
@@ -58,11 +63,11 @@ export default function OutputTrainer({ userId, name, onNeedName }) {
       const res = await fetch('/api/example-script', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme: theme.trim() }),
+        body: JSON.stringify({ theme: theme.trim(), moduleId }),
       }).then((r) => r.json());
       if (res && res.ok && res.script) {
         const next = {};
-        STEP_KEYS.forEach((k) => (next[k] = res.script[k] || ''));
+        stepKeys.forEach((k) => (next[k] = res.script[k] || ''));
         setValues(next);
         setNote('お手本を流し込みました。自分の言葉に書き換えてから記録しよう。');
       } else {
@@ -84,8 +89,8 @@ export default function OutputTrainer({ userId, name, onNeedName }) {
     }
     setSending(true); setNote('記録中...'); setFb(null); setFbError(''); setFbLoading(true);
 
-    const payload = { userId, name };
-    STEP_KEYS.forEach((k) => (payload[k] = values[k].trim()));
+    const payload = { userId, name, moduleId };
+    stepKeys.forEach((k) => (payload[k] = values[k].trim()));
 
     const savePromise = fetch('/api/save', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -179,7 +184,7 @@ export default function OutputTrainer({ userId, name, onNeedName }) {
       </section>
 
       <div className="submit-area">
-        <div className={'progress' + (allFilled ? ' full' : '')}>入力済み {filled} / {STEP_KEYS.length}</div>
+        <div className={'progress' + (allFilled ? ' full' : '')}>入力済み {filled} / {stepKeys.length}</div>
         <button type="button" className={'btn' + (ready ? ' ready' : '')} disabled={!ready} onClick={onSubmit}>
           {sending ? '査定中...' : '▶ 記録してプロマネージャーに査定してもらう'}
         </button>

@@ -11,9 +11,9 @@ export const maxDuration = 60;
 
 export async function POST(request) {
   try {
-    let theme = '';
-    try { theme = (await request.json())?.theme || ''; } catch { theme = ''; }
-    const result = await modelScript(theme);
+    let theme = '', moduleId = '';
+    try { const body = await request.json(); theme = body?.theme || ''; moduleId = body?.moduleId || ''; } catch {}
+    const result = await modelScript(theme, moduleId);
     return NextResponse.json({ ok: true, script: result });
   } catch (err) {
     return NextResponse.json(

@@ -5,7 +5,7 @@
 // =============================================================
 import { NextResponse } from 'next/server';
 import { appendOutput } from '@/lib/sheet';
-import { calcStats, EXP_PER_OUTPUT, STEP_KEYS } from '@/lib/havefun-data';
+import { calcStats, EXP_PER_OUTPUT, getStepKeys } from '@/lib/havefun-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +19,9 @@ export async function POST(request) {
     if (!String(data.name || '').trim()) {
       return NextResponse.json({ ok: false, message: '名前が未設定です。' }, { status: 400 });
     }
-    for (let i = 0; i < STEP_KEYS.length; i++) {
-      const v = data[STEP_KEYS[i]] ? String(data[STEP_KEYS[i]]).trim() : '';
+    const keys = getStepKeys(data.moduleId);
+    for (let i = 0; i < keys.length; i++) {
+      const v = data[keys[i]] ? String(data[keys[i]]).trim() : '';
       if (!v) {
         return NextResponse.json({ ok: false, message: `未入力の項目があります（ステップ${i + 1}）。` }, { status: 400 });
       }
