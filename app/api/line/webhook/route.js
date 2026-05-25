@@ -52,6 +52,14 @@ function gradeTemplate(moduleId) {
     `※上記をコピーして各項目を埋めて送信！`;
 }
 
+// ── テキストの【モジュール名】ヘッダーからmoduleIdを特定 ──
+function detectModuleId(text) {
+  const match = text.match(/^【([^】]+)】/);
+  if (!match) return null;
+  const title = match[1];
+  return Object.keys(MODULES).find((mid) => MODULES[mid].manual.title === title) || null;
+}
+
 // ── 7ステップのテキストをパース ──
 function parseSevenSteps(text) {
   const keys = ['tup', 'conclusion', 'content', 'example', 'workExample', 'reconclusion', 'ap'];
@@ -491,12 +499,39 @@ async function handleText(ev, userId) {
   }
 
   // ---- セッションなし・コマンドなし ----
-  // セッション切れの可能性があるので、7ステップっぽい入力には案内を返す
+  // 7ステップっぽい入力の場合、ヘッダーの【モジュール名】からmoduleIdを特定して採点
+  // (Vercelコールドスタートでセッションが消えても、テンプレのヘッダーさえあれば採点できる)
   const looksLikeSteps = /[1１][.．]/.test(text) && /[7７][.．]/.test(text);
   if (looksLikeSteps) {
-    await replyText(ev.replyToken,
-      'セッションが切れているかもしれません。\n\n' +
-      '#採点 からモジュールを選び直して、もう一度送ってください。');
+    const detectedModuleId = detectModuleId(text);
+    if (detectedModuleId) {
+      const steps = parseSevenSteps(text);
+      steps.moduleId = detectedModuleId;
+      const filled = Object.values(steps).filter((v) => typeof v === 'string' && v.length > 0).length;
+      if (filled < 3) {
+        await replyText(ev.replyToken,
+          '入力が足りないようです。\n7ステップのフォーマットで送り直してください。\n\n' +
+          '（もう一度 #採点 から始めることもできます）');
+        return;
+      }
+      await replyText(ev.replyToken, '⏳ AIが採点中です。少々お待ちください...');
+      try {
+        const fb = await gradeOutput(steps);
+        const modName = MODULES[detectedModuleId]?.manual?.title || '';
+        const result = `📋【${modName}】採点結果\n${formatGradeResult(fb)}`;
+        const msgs = chunkMessages(result, [
+          { label: 'もう1回採点', text: '#採点' },
+          { label: 'お手本を見る', data: `model:${detectedModuleId}`, displayText: '#お手本' },
+        ]);
+        await pushMessages(userId, msgs);
+      } catch (e) {
+        await pushText(userId, `⚠️ 採点でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`).catch(() => {});
+      }
+    } else {
+      // ヘッダーからモジュールを特定できない場合だけ案内
+      await replyText(ev.replyToken,
+        '#採点 からモジュールを選んでテンプレートをコピーし、各項目を埋めて送ってください。');
+    }
     return;
   }
 
