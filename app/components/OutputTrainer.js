@@ -204,7 +204,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         <div className="fx-flash" />
         <div className="fx-box">
           <div className="fx-title">アウトプット成功！</div>
-          <div className="fx-exp">Have fun EXP ＋{fx.gained}</div>
+          <div className="fx-exp">{MODULE.manual.title} EXP ＋{fx.gained}</div>
           {fx.levelUp && <div className="fx-levelup">▲ レベルアップ！ LV.{stats.level}</div>}
           <div className="fx-tap">▼ タップで閉じる</div>
         </div>

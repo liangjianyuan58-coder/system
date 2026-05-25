@@ -40,6 +40,7 @@ function modulesInCategory(commandPrefix, categoryLabel) {
 // ── 7ステップ入力テンプレート ──
 function gradeTemplate(moduleId) {
   const mod = MODULES[moduleId];
+  if (!mod) throw new Error(`モジュール "${moduleId}" が見つかりません。`);
   const name = mod.manual.title;
   return `【${name}】7ステップを以下のフォーマットで送ってください：\n\n` +
     `1.T-UP:\n（ここに入力）\n\n` +

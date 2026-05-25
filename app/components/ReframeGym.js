@@ -1,14 +1,12 @@
 // =============================================================
 // app/components/ReframeGym.js
 // モード：リフレーミング・ジム
-//   現場のネガ事象を提示 → ユーザーが意味付けを変えてプラス化 →
-//   /api/reframe で Gemini が「楽しい−悲しい をプラスにできたか」を査定＋お手本
 // =============================================================
 'use client';
 
 import { useEffect, useState } from 'react';
-import { randomScenario } from '@/lib/scenarios';
 import { getModule } from '@/lib/havefun-data';
+import { randomScenario } from '@/lib/scenarios';
 
 export default function ReframeGym({ moduleId }) {
   const MODULE = getModule(moduleId);
@@ -19,6 +17,12 @@ export default function ReframeGym({ moduleId }) {
   const [error, setError] = useState('');
 
   useEffect(() => { setSituation(randomScenario()); }, []);
+
+  useEffect(() => {
+    setReframe('');
+    setFb(null);
+    setError('');
+  }, [moduleId]);
 
   function draw() {
     setSituation(randomScenario(situation));
@@ -47,14 +51,15 @@ export default function ReframeGym({ moduleId }) {
     }
   }
 
+  const modTitle = MODULE ? MODULE.manual.title : '';
+
   return (
     <>
-      <section className=”window dict-window”>
-        <div className=”window__title”>＊ リフレーミング・ジム</div>
-        <p className=”dict-summary”>
-          現場で起きるネガ事象は変えられない。だが”意味付け”は自由に変えられる。
-          「{MODULE.manual.title}」の視点で事実を認めた上で、捉え方を変えてプラスに転じよ。
-          {MODULE.manual.oneLiner}
+      <section className="window dict-window">
+        <div className="window__title">＊ リフレーミング・ジム</div>
+        <p className="dict-summary">
+          {'現場で起きるネガ事象は変えられない。だが「意味付け」は自由に変えられる。'}
+          {'[' + modTitle + ']の視点で事実を認めた上で、捉え方を変えてプラスに転じよ。'}
         </p>
       </section>
 

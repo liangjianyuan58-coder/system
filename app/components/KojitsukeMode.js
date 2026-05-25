@@ -1,15 +1,12 @@
 // =============================================================
 // app/components/KojitsukeMode.js
 // モードB：こじつけ力強化
-//   1. お題の単語を提示（ランダム or 自分で入力）
-//   2. その単語でHave funを「こじつけ」説明
-//   3. /api/kojitsuke で AI FB ＋ お手本例
 // =============================================================
 'use client';
 
 import { useEffect, useState } from 'react';
-import { randomWord } from '@/lib/words';
 import { getModule } from '@/lib/havefun-data';
+import { randomWord } from '@/lib/words';
 
 export default function KojitsukeMode({ moduleId }) {
   const MODULE = getModule(moduleId);
@@ -19,8 +16,13 @@ export default function KojitsukeMode({ moduleId }) {
   const [fb, setFb] = useState(null);
   const [error, setError] = useState('');
 
-  // 初回にお題を1つ引く
   useEffect(() => { setWord(randomWord()); }, []);
+
+  useEffect(() => {
+    setOutput('');
+    setFb(null);
+    setError('');
+  }, [moduleId]);
 
   function draw() {
     setWord(randomWord(word));
@@ -51,19 +53,18 @@ export default function KojitsukeMode({ moduleId }) {
     }
   }
 
+  const modTitle = MODULE ? MODULE.manual.title : '';
+
   return (
     <>
-      {/* 説明 */}
-      <section className=”window dict-window”>
-        <div className=”window__title”>＊ こじつけ力強化モード</div>
-        <p className=”dict-summary”>
-          一見まったく無関係な単語を、強引かつ論理的に「{MODULE.manual.title}」へ結びつけて説明するトレーニング。
-          リフレーミングの筋トレです。{MODULE.manual.oneLiner}などの本質に芯を食わせて、
-          “なるほど！”と膝を打つこじつけを狙え。
+      <section className="window dict-window">
+        <div className="window__title">＊ こじつけ力強化モード</div>
+        <p className="dict-summary">
+          {'一見まったく無関係な単語を、強引かつ論理的に「' + modTitle + '」へ結びつけて説明するトレーニング。'}
+          {'リフレーミングの筋トレです。「なるほど！」と膝を打つこじつけを狙え。'}
         </p>
       </section>
 
-      {/* お題 */}
       <section className="window koji-word-window">
         <div className="window__title">＊ お題の単語</div>
         <div className="koji-word">{word || '—'}</div>
@@ -79,13 +80,12 @@ export default function KojitsukeMode({ moduleId }) {
         />
       </section>
 
-      {/* こじつけ入力 */}
       <section className="window">
-        <div className="window__title">＊ この単語で{MODULE.manual.title}をこじつけ説明せよ</div>
+        <div className="window__title">{'＊ この単語で' + modTitle + 'をこじつけ説明せよ'}</div>
         <textarea
           className="step__input"
           rows={6}
-          placeholder={`例：「${word || 'お題'}」と${MODULE.manual.title}の共通点は…`}
+          placeholder={'例：「' + (word || 'お題') + '」と' + modTitle + 'の共通点は…'}
           value={output}
           onChange={(e) => setOutput(e.target.value)}
         />
@@ -98,7 +98,6 @@ export default function KojitsukeMode({ moduleId }) {
         <div className="submit-note">{sending ? '※ プロマネージャーがこじつけ力を判定中' : '※ 単語と説明の両方が必要です'}</div>
       </div>
 
-      {/* FB */}
       {(sending || fb || error) && (
         <section className="window fb-window">
           <div className="window__title">＊ こじつけ査定 ＆ お手本</div>
