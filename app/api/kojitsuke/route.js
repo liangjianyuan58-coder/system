@@ -11,7 +11,7 @@ export const maxDuration = 60;
 
 export async function POST(request) {
   try {
-    const { word, output } = await request.json();
+    const { word, output, moduleId } = await request.json();
 
     if (!word || !String(word).trim()) {
       return NextResponse.json({ ok: false, message: 'お題の単語がありません。' }, { status: 400 });
@@ -20,7 +20,7 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, message: 'こじつけ説明を入力してください。' }, { status: 400 });
     }
 
-    const result = await kojitsukeFeedback(String(word).trim(), String(output).trim());
+    const result = await kojitsukeFeedback(String(word).trim(), String(output).trim(), moduleId || '');
     return NextResponse.json({ ok: true, feedback: result });
   } catch (err) {
     return NextResponse.json(

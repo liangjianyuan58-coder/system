@@ -10,12 +10,12 @@ export const maxDuration = 60;
 
 export async function POST(request) {
   try {
-    const { situation, reframe } = await request.json();
+    const { situation, reframe, moduleId } = await request.json();
     if (!situation || !String(situation).trim())
       return NextResponse.json({ ok: false, message: 'お題（ネガ事象）がありません。' }, { status: 400 });
     if (!reframe || !String(reframe).trim())
       return NextResponse.json({ ok: false, message: 'リフレーミングを入力してください。' }, { status: 400 });
-    const result = await reframeFeedback(String(situation).trim(), String(reframe).trim());
+    const result = await reframeFeedback(String(situation).trim(), String(reframe).trim(), moduleId || '');
     return NextResponse.json({ ok: true, feedback: result });
   } catch (err) {
     return NextResponse.json(

@@ -100,8 +100,8 @@ export default function Page() {
         </nav>
 
         {mode === 'output' && <OutputTrainer userId={userId} name={name} moduleId={activeModule} onNeedName={() => setEditing(true)} />}
-        {mode === 'reframe' && <ReframeGym />}
-        {mode === 'kojitsuke' && <KojitsukeMode />}
+        {mode === 'reframe' && <ReframeGym moduleId={activeModule} />}
+        {mode === 'kojitsuke' && <KojitsukeMode moduleId={activeModule} />}
         {mode === 'history' && <History userId={userId} name={name} />}
 
         <footer className="app-footer">Have fun System ─ v4.0（個人識別）</footer>

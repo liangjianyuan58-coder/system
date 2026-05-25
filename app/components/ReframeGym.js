@@ -8,8 +8,10 @@
 
 import { useEffect, useState } from 'react';
 import { randomScenario } from '@/lib/scenarios';
+import { getModule } from '@/lib/havefun-data';
 
-export default function ReframeGym() {
+export default function ReframeGym({ moduleId }) {
+  const MODULE = getModule(moduleId);
   const [situation, setSituation] = useState('');
   const [reframe, setReframe] = useState('');
   const [sending, setSending] = useState(false);
@@ -34,7 +36,7 @@ export default function ReframeGym() {
       const res = await fetch('/api/reframe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ situation: situation.trim(), reframe: reframe.trim() }),
+        body: JSON.stringify({ situation: situation.trim(), reframe: reframe.trim(), moduleId: moduleId || '' }),
       }).then((r) => r.json());
       if (res && res.ok) setFb(res.feedback);
       else setError(res && res.message ? res.message : 'AI査定に失敗しました');
@@ -47,12 +49,12 @@ export default function ReframeGym() {
 
   return (
     <>
-      <section className="window dict-window">
-        <div className="window__title">＊ リフレーミング・ジム</div>
-        <p className="dict-summary">
-          「楽しいこと（主観的工夫）− 悲しいこと（客観的事実）＝ Have fun」。
-          現場で起きるネガ事象は変えられない。だが“意味付け”は自由に変えられる。
-          事実は認めた上で、捉え方を変えて引き算をプラスに転じよ。
+      <section className=”window dict-window”>
+        <div className=”window__title”>＊ リフレーミング・ジム</div>
+        <p className=”dict-summary”>
+          現場で起きるネガ事象は変えられない。だが”意味付け”は自由に変えられる。
+          「{MODULE.manual.title}」の視点で事実を認めた上で、捉え方を変えてプラスに転じよ。
+          {MODULE.manual.oneLiner}
         </p>
       </section>
 

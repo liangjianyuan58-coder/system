@@ -9,8 +9,10 @@
 
 import { useEffect, useState } from 'react';
 import { randomWord } from '@/lib/words';
+import { getModule } from '@/lib/havefun-data';
 
-export default function KojitsukeMode() {
+export default function KojitsukeMode({ moduleId }) {
+  const MODULE = getModule(moduleId);
   const [word, setWord] = useState('');
   const [output, setOutput] = useState('');
   const [sending, setSending] = useState(false);
@@ -38,7 +40,7 @@ export default function KojitsukeMode() {
       const res = await fetch('/api/kojitsuke', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: word.trim(), output: output.trim() }),
+        body: JSON.stringify({ word: word.trim(), output: output.trim(), moduleId: moduleId || '' }),
       }).then((r) => r.json());
       if (res && res.ok) setFb(res.feedback);
       else setError(res && res.message ? res.message : 'AI査定に失敗しました');
@@ -52,11 +54,11 @@ export default function KojitsukeMode() {
   return (
     <>
       {/* 説明 */}
-      <section className="window dict-window">
-        <div className="window__title">＊ こじつけ力強化モード</div>
-        <p className="dict-summary">
-          一見まったく無関係な単語を、強引かつ論理的に「Have fun」へ結びつけて説明するトレーニング。
-          リフレーミングの筋トレです。「楽しい−悲しい＝Have fun」「作業→ゲーム化」などの本質に芯を食わせて、
+      <section className=”window dict-window”>
+        <div className=”window__title”>＊ こじつけ力強化モード</div>
+        <p className=”dict-summary”>
+          一見まったく無関係な単語を、強引かつ論理的に「{MODULE.manual.title}」へ結びつけて説明するトレーニング。
+          リフレーミングの筋トレです。{MODULE.manual.oneLiner}などの本質に芯を食わせて、
           “なるほど！”と膝を打つこじつけを狙え。
         </p>
       </section>
@@ -79,11 +81,11 @@ export default function KojitsukeMode() {
 
       {/* こじつけ入力 */}
       <section className="window">
-        <div className="window__title">＊ この単語でハブファンをこじつけ説明せよ</div>
+        <div className="window__title">＊ この単語で{MODULE.manual.title}をこじつけ説明せよ</div>
         <textarea
           className="step__input"
           rows={6}
-          placeholder={`例：「${word || 'お題'}」とハブファンの共通点は…`}
+          placeholder={`例：「${word || 'お題'}」と${MODULE.manual.title}の共通点は…`}
           value={output}
           onChange={(e) => setOutput(e.target.value)}
         />
