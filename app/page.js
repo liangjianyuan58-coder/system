@@ -13,6 +13,7 @@ import OutputTrainer from './components/OutputTrainer';
 import ReframeGym from './components/ReframeGym';
 import KojitsukeMode from './components/KojitsukeMode';
 import History from './components/History';
+import NorthStarPin from './components/NorthStarPin';
 
 export default function Page() {
   const [activeModule, setActiveModule] = useState('havefun');
@@ -90,6 +91,9 @@ export default function Page() {
           )}
           {!name && !editing && <div className="profile-hint">※ 記録するには名前の設定が必要です</div>}
         </section>
+
+        {/* 北極星ピン */}
+        {userId && <NorthStarPin userId={userId} name={name} />}
 
         {/* タブ */}
         <nav className="tabs" role="tablist">

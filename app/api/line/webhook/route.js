@@ -6,9 +6,10 @@
 // =============================================================
 import { NextResponse } from 'next/server';
 import { verifySignature, replyText, replyMessages, textWithQuickReply, chunkMessages } from '@/lib/line';
-import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript } from '@/lib/gemini';
+import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript, northStarReview } from '@/lib/gemini';
 import { MODULES, MODULE_CATEGORIES } from '@/lib/havefun-data';
 import { getSession, setSession, clearSession, cleanupSessions } from '@/lib/line-session';
+import { getNorthStar, setNorthStar, getRecentOutputs } from '@/lib/sheet';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -158,7 +159,9 @@ async function handleEvent(ev) {
       '#採点 → 7ステップ採点\n' +
       '#お手本 → お手本スクリプト生成\n' +
       '#こじつけ → こじつけ力FB\n' +
-      '#リフレーム → リフレーミングFB\n\n' +
+      '#リフレーム → リフレーミングFB\n' +
+      '#北極星 [目標] → 長期目標を登録\n' +
+      '#振り返り → 北極星との週次振り返り\n\n' +
       'リッチメニューからコマンドを選ぶか、上のコマンドをそのまま送ってね！');
     return;
   }
@@ -346,6 +349,53 @@ async function handleText(ev, userId) {
     return;
   }
 
+  // #北極星 [goal]
+  if (/^[#＃]北極星/.test(text)) {
+    const goal = text.replace(/^[#＃]北極星\s*/, '').trim();
+    if (!goal) {
+      setSession(userId, { action: 'northstar_input' });
+      await replyText(ev.replyToken,
+        '⭐ 北極星（長期目標）登録\n\n' +
+        'あなたが目指す長期目標を送ってください。\n\n' +
+        '例：「1年以内にチームトップの売上を出し、マネージャーに昇格する」');
+      return;
+    }
+    try {
+      await setNorthStar(userId, userId, '', goal);
+      await replyText(ev.replyToken,
+        '⭐ 北極星を登録しました！\n\n「' + goal + '」\n\n' +
+        '毎週月曜にAIが先週の行動と照合して振り返りを送ります。\n手動で振り返りたいときは #振り返り を送ってください。');
+    } catch (e) {
+      await replyText(ev.replyToken, '登録でエラーが発生しました。もう一度お試しください。');
+    }
+    return;
+  }
+
+  // #振り返り
+  if (/^[#＃]振り返り/.test(text)) {
+    try {
+      const data = await getNorthStar(userId);
+      if (!data || !data.northStar) {
+        await replyText(ev.replyToken,
+          '北極星がまだ登録されていません。\n#北極星 に続けて目標を送ってください。\n\n例: #北極星 1年以内にマネージャーに昇格する');
+        return;
+      }
+      const recentOutputs = await getRecentOutputs(userId, 7);
+      const review = await northStarReview(data.northStar, recentOutputs);
+      const msg =
+        '⭐ 北極星 振り返り\n「' + data.northStar + '」\n\n' +
+        '整合度: ' + (review.alignment ?? '-') + ' / 10\n\n' +
+        '📝 ' + (review.comment || '') + '\n\n' +
+        '✅ 良かった点:\n' + (review.good || '-') + '\n\n' +
+        '💡 課題:\n' + (review.challenge || '-') + '\n\n' +
+        '🎯 来週のAP:\n' + (review.nextAP || '-');
+      await replyText(ev.replyToken, msg);
+    } catch (e) {
+      await replyText(ev.replyToken, '振り返りでエラーが発生しました。もう一度お試しください。');
+    }
+    return;
+  }
+
   // #ヘルプ / #help
   if (/^[#＃](ヘルプ|help)/i.test(text)) {
     await replyText(ev.replyToken,
@@ -354,7 +404,9 @@ async function handleText(ev, userId) {
       '#お手本 → お手本スクリプト生成\n' +
       '#こじつけ → こじつけ力トレーニング\n' +
       '#リフレーム → リフレーミング・ジム\n' +
-      '#逆質問 → 理解度チェック\n\n' +
+      '#逆質問 → 理解度チェック\n' +
+      '#北極星 [目標] → 長期目標を登録\n' +
+      '#振り返り → 北極星との週次振り返り\n\n' +
       'リッチメニューのボタンからも同じ操作ができます！');
     return;
   }
@@ -444,6 +496,24 @@ async function handleText(ev, userId) {
           await replyMessages(ev.replyToken, msgs);
         } catch (e) {
           await replyText(ev.replyToken, 'リフレーミング査定エラー。もう一度お試しください。');
+        }
+        return;
+      }
+
+      case 'northstar_input': {
+        clearSession(userId);
+        const goal = text.trim();
+        if (!goal) {
+          await replyText(ev.replyToken, '目標が空です。もう一度 #北極星 から始めてください。');
+          return;
+        }
+        try {
+          await setNorthStar(userId, userId, '', goal);
+          await replyText(ev.replyToken,
+            '⭐ 北極星を登録しました！\n\n「' + goal + '」\n\n' +
+            '毎週月曜にAIが振り返りを送ります。\n手動確認は #振り返り でいつでもできます。');
+        } catch (e) {
+          await replyText(ev.replyToken, '登録エラー。もう一度お試しください。');
         }
         return;
       }

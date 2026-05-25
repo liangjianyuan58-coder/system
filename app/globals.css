@@ -244,3 +244,15 @@ body {
 .hist-step { font-size: 12.5px; margin-bottom: 7px; }
 .hist-step b { display: block; color: var(--accent); margin-bottom: 2px; }
 .hist-more { width: 100%; margin-top: 8px; background: none; border: 1px solid rgba(255,255,255,.3); border-radius: 4px; color: var(--dim); font-family: inherit; font-size: 11px; padding: 6px; cursor: pointer; }
+
+/* ===== 北極星ピン ===== */
+.northstar-pin { border-color: #ffe14d; box-shadow: 0 0 0 3px #000, 0 0 16px rgba(255,225,77,.18); }
+.northstar-text { font-size: 15px; line-height: 1.8; color: var(--accent); margin: 0 0 12px; text-shadow: 0 0 10px rgba(255,225,77,.3); word-break: break-all; }
+.northstar-hint { font-size: 13px; color: var(--dim); margin: 0 0 12px; line-height: 1.7; }
+.northstar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.northstar-review-btn { border-color: var(--green); color: var(--green); }
+.northstar-review-btn.reviewing { opacity: .7; }
+.northstar-input { margin-bottom: 10px; }
+.northstar-edit-actions { display: flex; gap: 10px; }
+.northstar-edit-actions .btn { flex: 1; font-size: 14px; padding: 12px; }
+.northstar-review-result { border-top: 2px dotted rgba(255,255,255,.25); margin-top: 14px; padding-top: 4px; }
