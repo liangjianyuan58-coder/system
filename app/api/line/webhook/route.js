@@ -5,10 +5,10 @@
 //   + モジュール選択 Quick Reply + セッション管理
 // =============================================================
 import { NextResponse } from 'next/server';
-import { verifySignature, replyText, replyMessages, textWithQuickReply, chunkMessages } from '@/lib/line';
+import { verifySignature, replyText, replyMessages, textWithQuickReply, chunkMessages, getLineDisplayName } from '@/lib/line';
 import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript, northStarReview } from '@/lib/gemini';
 import { MODULES, MODULE_CATEGORIES } from '@/lib/havefun-data';
-import { getNorthStar, setNorthStar, getRecentOutputs, getLineSession, setLineSession, clearLineSession } from '@/lib/sheet';
+import { getNorthStar, setNorthStar, getRecentOutputs, getLineSession, setLineSession, clearLineSession, appendOutput, saveGrade, appendTrainingLog } from '@/lib/sheet';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -306,8 +306,9 @@ async function handleText(ev, userId) {
     }
     // 即採点
     try {
-      const fb = await kojitsukeFeedback(word, output);
+      const [fb, displayName] = await Promise.all([kojitsukeFeedback(word, output), getLineDisplayName(userId)]);
       await replyText(ev.replyToken, formatKojitsuke(fb));
+      appendTrainingLog({ userId, name: displayName || '(LINE)', type: 'kojitsuke', moduleId: '', input1: word, input2: output, aiScore: fb.score }).catch(() => {});
     } catch (e) {
       await replyText(ev.replyToken, 'こじつけ査定でエラーが発生しました。もう一度お試しください。');
     }
@@ -337,8 +338,9 @@ async function handleText(ev, userId) {
       return;
     }
     try {
-      const fb = await reframeFeedback(situation, reframe);
+      const [fb, displayName] = await Promise.all([reframeFeedback(situation, reframe), getLineDisplayName(userId)]);
       await replyText(ev.replyToken, formatReframe(fb));
+      appendTrainingLog({ userId, name: displayName || '(LINE)', type: 'reframe', moduleId: '', input1: situation, input2: reframe, aiScore: fb.score }).catch(() => {});
     } catch (e) {
       await replyText(ev.replyToken, 'リフレーミング査定でエラーが発生しました。');
     }
@@ -428,7 +430,10 @@ async function handleText(ev, userId) {
         }
 
         try {
-          const fb = await gradeOutput(steps);
+          const [fb, displayName] = await Promise.all([
+            gradeOutput(steps),
+            getLineDisplayName(userId),
+          ]);
           const modName = MODULES[session.moduleId]?.manual?.title || '';
           const result = `📋【${modName}】採点結果\n${formatGradeResult(fb)}`;
           const msgs = chunkMessages(result, [
@@ -436,6 +441,15 @@ async function handleText(ev, userId) {
             { label: 'お手本を見る', data: `model:${session.moduleId}`, displayText: '#お手本' },
           ]);
           await replyMessages(ev.replyToken, msgs);
+          // シートへ保存（返信後にfireして待たない）
+          appendOutput({
+            userId, name: displayName || '(LINE)',
+            moduleId: session.moduleId, usedModel: false,
+            tup: steps.tup || '', conclusion: steps.conclusion || '',
+            content: steps.content || '', example: steps.example || '',
+            workExample: steps.workExample || '', reconclusion: steps.reconclusion || '',
+            ap: steps.ap || '',
+          }).then((u) => saveGrade(userId, u.ts, fb.total, fb.verdict)).catch(() => {});
         } catch (e) {
           await replyText(ev.replyToken, `採点エラー: ${e.message || 'もう一度お試しください。'}`);
         }
@@ -456,13 +470,16 @@ async function handleText(ev, userId) {
         // 説明を受け取って採点
         await clearLineSession(userId);
         const word = session.extra?.word || '?';
+        const moduleId_koji = session.moduleId || '';
         try {
-          const fb = await kojitsukeFeedback(word, text);
-          const result = formatKojitsuke(fb);
-          const msgs = chunkMessages(result, [
-            { label: 'もう1回', text: '#こじつけ' },
+          const [fb, displayName] = await Promise.all([
+            kojitsukeFeedback(word, text, moduleId_koji),
+            getLineDisplayName(userId),
           ]);
+          const result = formatKojitsuke(fb);
+          const msgs = chunkMessages(result, [{ label: 'もう1回', text: '#こじつけ' }]);
           await replyMessages(ev.replyToken, msgs);
+          appendTrainingLog({ userId, name: displayName || '(LINE)', type: 'kojitsuke', moduleId: moduleId_koji, input1: word, input2: text, aiScore: fb.score }).catch(() => {});
         } catch (e) {
           await replyText(ev.replyToken, 'こじつけ査定エラー。もう一度お試しください。');
         }
@@ -473,23 +490,18 @@ async function handleText(ev, userId) {
         // リフレーム入力
         await clearLineSession(userId);
         const { situation, reframe } = parseReframeInput(text);
-        if (!situation && !reframe) {
-          // フォーマット無視の自由入力 → そのまま全体をリフレームとして査定
-          try {
-            const fb = await reframeFeedback('（LINEで送られた状況/捉え方）', text);
-            await replyText(ev.replyToken, formatReframe(fb));
-          } catch (e) {
-            await replyText(ev.replyToken, 'リフレーミング査定エラー。もう一度お試しください。');
-          }
-          return;
-        }
+        const moduleId_ref = session.moduleId || '';
         try {
-          const fb = await reframeFeedback(situation, reframe);
-          const result = formatReframe(fb);
-          const msgs = chunkMessages(result, [
-            { label: 'もう1回', text: '#リフレーム' },
+          const sitFinal = situation || '（LINEで送られた状況）';
+          const refFinal = reframe || text;
+          const [fb, displayName] = await Promise.all([
+            reframeFeedback(sitFinal, refFinal, moduleId_ref),
+            getLineDisplayName(userId),
           ]);
+          const result = formatReframe(fb);
+          const msgs = chunkMessages(result, [{ label: 'もう1回', text: '#リフレーム' }]);
           await replyMessages(ev.replyToken, msgs);
+          appendTrainingLog({ userId, name: displayName || '(LINE)', type: 'reframe', moduleId: moduleId_ref, input1: sitFinal, input2: refFinal, aiScore: fb.score }).catch(() => {});
         } catch (e) {
           await replyText(ev.replyToken, 'リフレーミング査定エラー。もう一度お試しください。');
         }
