@@ -8,8 +8,7 @@ import { NextResponse } from 'next/server';
 import { verifySignature, replyText, replyMessages, textWithQuickReply, chunkMessages } from '@/lib/line';
 import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript, northStarReview } from '@/lib/gemini';
 import { MODULES, MODULE_CATEGORIES } from '@/lib/havefun-data';
-import { getSession, setSession, clearSession, cleanupSessions } from '@/lib/line-session';
-import { getNorthStar, setNorthStar, getRecentOutputs } from '@/lib/sheet';
+import { getNorthStar, setNorthStar, getRecentOutputs, getLineSession, setLineSession, clearLineSession } from '@/lib/sheet';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -140,9 +139,6 @@ export async function POST(request) {
   try { body = JSON.parse(raw); } catch { return NextResponse.json({ ok: true }); }
   const events = Array.isArray(body.events) ? body.events : [];
 
-  // 定期クリーンアップ
-  cleanupSessions();
-
   await Promise.all(events.map((ev) => handleEvent(ev).catch(() => {})));
   return NextResponse.json({ ok: true });
 }
@@ -212,7 +208,7 @@ async function handlePostback(ev, userId) {
   switch (command) {
     case 'grade': {
       // セッションに「採点待ち」を保存
-      setSession(userId, { action: 'grade', moduleId });
+      await setLineSession(userId, { action: 'grade', moduleId });
       await replyText(ev.replyToken, gradeTemplate(moduleId));
       break;
     }
@@ -234,7 +230,7 @@ async function handlePostback(ev, userId) {
     }
 
     case 'reverse': {
-      setSession(userId, { action: 'reverse', moduleId });
+      await setLineSession(userId, { action: 'reverse', moduleId });
       await replyText(ev.replyToken,
         `【${modName}】逆質問モード\n\n` +
         `あなたが「${modName}」について知っていることを自由に説明してください。\n` +
@@ -290,7 +286,7 @@ async function handleText(ev, userId) {
   if (/^[#＃]こじつけ/.test(text)) {
     const content = text.replace(/^[#＃]こじつけ\s*/, '');
     if (!content) {
-      setSession(userId, { action: 'kojitsuke_word' });
+      await setLineSession(userId, { action: 'kojitsuke_word' });
       await replyText(ev.replyToken,
         '💪 こじつけ力トレーニング！\n\n' +
         'まずお題の「単語」を送ってください。\n' +
@@ -302,7 +298,7 @@ async function handleText(ev, userId) {
     const word = lines[0].trim();
     const output = lines.slice(1).join('\n').trim();
     if (!output) {
-      setSession(userId, { action: 'kojitsuke_output', extra: { word } });
+      await setLineSession(userId, { action: 'kojitsuke_output', extra: { word } });
       await replyText(ev.replyToken,
         `お題：「${word}」\n\n` +
         `この単語を使ってモジュールの本質を説明してください！`);
@@ -322,7 +318,7 @@ async function handleText(ev, userId) {
   if (/^[#＃]リフレーム/.test(text)) {
     const content = text.replace(/^[#＃]リフレーム\s*/, '');
     if (!content) {
-      setSession(userId, { action: 'reframe_input' });
+      await setLineSession(userId, { action: 'reframe_input' });
       await replyText(ev.replyToken,
         '🔄 リフレーミング・ジム！\n\n' +
         'ネガ事象とリフレーミングを以下のフォーマットで送ってください：\n\n' +
@@ -335,7 +331,7 @@ async function handleText(ev, userId) {
     // パースして即採点
     const { situation, reframe } = parseReframeInput(content);
     if (!situation || !reframe) {
-      setSession(userId, { action: 'reframe_input' });
+      await setLineSession(userId, { action: 'reframe_input' });
       await replyText(ev.replyToken,
         '以下のフォーマットで送ってください：\n\n事象: （ネガ事象）\n捉え方: （リフレーミング）');
       return;
@@ -353,7 +349,7 @@ async function handleText(ev, userId) {
   if (/^[#＃]北極星/.test(text)) {
     const goal = text.replace(/^[#＃]北極星\s*/, '').trim();
     if (!goal) {
-      setSession(userId, { action: 'northstar_input' });
+      await setLineSession(userId, { action: 'northstar_input' });
       await replyText(ev.replyToken,
         '⭐ 北極星（長期目標）登録\n\n' +
         'あなたが目指す長期目標を送ってください。\n\n' +
@@ -412,13 +408,13 @@ async function handleText(ev, userId) {
   }
 
   // ---- セッションに基づく処理 ----
-  const session = getSession(userId);
+  const session = await getLineSession(userId);
 
   if (session) {
     switch (session.action) {
       case 'grade': {
         // 7ステップのテキストをパースして採点
-        clearSession(userId);
+        await clearLineSession(userId);
         const steps = parseSevenSteps(text);
         steps.moduleId = session.moduleId;
 
@@ -449,7 +445,7 @@ async function handleText(ev, userId) {
       case 'kojitsuke_word': {
         // 単語を受け取り、次は説明を待つ
         const word = text;
-        setSession(userId, { action: 'kojitsuke_output', extra: { word } });
+        await setLineSession(userId, { action: 'kojitsuke_output', extra: { word } });
         await replyText(ev.replyToken,
           `お題：「${word}」\n\n` +
           `この単語を使ってHave fun（またはアクティブモジュール）の本質をこじつけて説明してください！`);
@@ -458,7 +454,7 @@ async function handleText(ev, userId) {
 
       case 'kojitsuke_output': {
         // 説明を受け取って採点
-        clearSession(userId);
+        await clearLineSession(userId);
         const word = session.extra?.word || '?';
         try {
           const fb = await kojitsukeFeedback(word, text);
@@ -475,7 +471,7 @@ async function handleText(ev, userId) {
 
       case 'reframe_input': {
         // リフレーム入力
-        clearSession(userId);
+        await clearLineSession(userId);
         const { situation, reframe } = parseReframeInput(text);
         if (!situation && !reframe) {
           // フォーマット無視の自由入力 → そのまま全体をリフレームとして査定
@@ -501,7 +497,7 @@ async function handleText(ev, userId) {
       }
 
       case 'northstar_input': {
-        clearSession(userId);
+        await clearLineSession(userId);
         const goal = text.trim();
         if (!goal) {
           await replyText(ev.replyToken, '目標が空です。もう一度 #北極星 から始めてください。');
@@ -520,7 +516,7 @@ async function handleText(ev, userId) {
 
       case 'reverse': {
         // 逆質問モード：ユーザーの説明をGeminiに渡してFBを返す
-        clearSession(userId);
+        await clearLineSession(userId);
         const moduleId = session.moduleId;
         const modName = MODULES[moduleId]?.manual?.title || '';
         try {

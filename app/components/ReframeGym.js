@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { getModule } from '@/lib/havefun-data';
 import { randomScenario } from '@/lib/scenarios';
 
-export default function ReframeGym({ moduleId }) {
+export default function ReframeGym({ moduleId, userId, name }) {
   const MODULE = getModule(moduleId);
   const [situation, setSituation] = useState('');
   const [reframe, setReframe] = useState('');
@@ -40,7 +40,7 @@ export default function ReframeGym({ moduleId }) {
       const res = await fetch('/api/reframe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ situation: situation.trim(), reframe: reframe.trim(), moduleId: moduleId || '' }),
+        body: JSON.stringify({ situation: situation.trim(), reframe: reframe.trim(), moduleId: moduleId || '', userId: userId || '', name: name || '' }),
       }).then((r) => r.json());
       if (res && res.ok) setFb(res.feedback);
       else setError(res && res.message ? res.message : 'AI査定に失敗しました');

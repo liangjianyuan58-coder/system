@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { getModule } from '@/lib/havefun-data';
 import { randomWord } from '@/lib/words';
 
-export default function KojitsukeMode({ moduleId }) {
+export default function KojitsukeMode({ moduleId, userId, name }) {
   const MODULE = getModule(moduleId);
   const [word, setWord] = useState('');
   const [output, setOutput] = useState('');
@@ -42,7 +42,7 @@ export default function KojitsukeMode({ moduleId }) {
       const res = await fetch('/api/kojitsuke', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: word.trim(), output: output.trim(), moduleId: moduleId || '' }),
+        body: JSON.stringify({ word: word.trim(), output: output.trim(), moduleId: moduleId || '', userId: userId || '', name: name || '' }),
       }).then((r) => r.json());
       if (res && res.ok) setFb(res.feedback);
       else setError(res && res.message ? res.message : 'AI査定に失敗しました');

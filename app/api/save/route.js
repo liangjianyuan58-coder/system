@@ -31,6 +31,8 @@ export async function POST(request) {
     const u = await appendOutput({
       userId: String(data.userId).trim(),
       name: String(data.name).trim(),
+      moduleId: String(data.moduleId || '').trim(),
+      usedModel: !!data.usedModel,
       tup: data.tup, conclusion: data.conclusion, content: data.content,
       example: data.example, workExample: data.workExample,
       reconclusion: data.reconclusion, ap: data.ap,
@@ -39,6 +41,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       ok: true,
+      ts: u.ts,
       message: 'アウトプットを記録しました！',
       gained: EXP_PER_OUTPUT,
       levelUp: after.level > before,

@@ -29,6 +29,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   const [theme, setTheme] = useState('');
   const [modelLoading, setModelLoading] = useState(false);
   const [modelError, setModelError] = useState('');
+  const [usedModel, setUsedModel] = useState(false);
   const fxTimer = useRef(null);
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   useEffect(() => {
     setValues(EMPTY_STATE);
     setFb(null); setFbError(''); setNote('※ 7項目すべて埋めないと記録できません');
+    setUsedModel(false);
   }, [moduleId]);
 
   const filled = stepKeys.filter((k) => values[k].trim().length > 0).length;
@@ -69,6 +71,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         const next = {};
         stepKeys.forEach((k) => (next[k] = res.script[k] || ''));
         setValues(next);
+        setUsedModel(true);
         setNote('お手本を流し込みました。自分の言葉に書き換えてから記録しよう。');
       } else {
         setModelError(res && res.message ? res.message : 'お手本生成に失敗しました');
@@ -89,7 +92,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
     }
     setSending(true); setNote('記録中...'); setFb(null); setFbError(''); setFbLoading(true);
 
-    const payload = { userId, name, moduleId };
+    const payload = { userId, name, moduleId, usedModel };
     stepKeys.forEach((k) => (payload[k] = values[k].trim()));
 
     const savePromise = fetch('/api/save', {
@@ -100,7 +103,24 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     })
       .then((r) => r.json())
-      .then((res) => { if (res && res.ok) setFb(res.feedback); else setFbError(res?.message || 'AI査定に失敗しました'); })
+      .then(async (res) => {
+        if (res && res.ok) {
+          setFb(res.feedback);
+          // 採点結果をシートに書き戻す（saveが完了してtsが取れてから）
+          try {
+            const saveRes = await savePromise;
+            if (saveRes && saveRes.ok && saveRes.ts) {
+              fetch('/api/log-grade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, ts: saveRes.ts, total: res.feedback.total, verdict: res.feedback.verdict }),
+              }).catch(() => {});
+            }
+          } catch {}
+        } else {
+          setFbError(res?.message || 'AI査定に失敗しました');
+        }
+      })
       .catch((e) => setFbError('AI査定通信エラー: ' + (e.message || e)))
       .finally(() => setFbLoading(false));
 
@@ -117,6 +137,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         clearTimeout(fxTimer.current);
         fxTimer.current = setTimeout(() => setFx((f) => ({ ...f, show: false })), res.levelUp ? 2600 : 1800);
         setNote('記録しました。下の査定FBを確認して、必要なら書き直そう。');
+        setUsedModel(false);
       } else {
         setNote(res?.message || '保存に失敗しました');
       }
@@ -185,6 +206,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
 
       <div className="submit-area">
         <div className={'progress' + (allFilled ? ' full' : '')}>入力済み {filled} / {stepKeys.length}</div>
+        {usedModel && <div className="model-used-badge">✨ お手本使用</div>}
         <button type="button" className={'btn' + (ready ? ' ready' : '')} disabled={!ready} onClick={onSubmit}>
           {sending ? '査定中...' : '▶ 記録してプロマネージャーに査定してもらう'}
         </button>
