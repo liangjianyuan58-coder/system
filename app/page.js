@@ -80,7 +80,9 @@ export default function Page() {
                 onKeyDown={(e) => { if (e.key === 'Enter') commitName(); }}
                 autoFocus
               />
-              <button className="btn btn--sub profile-save" onClick={commitName} disabled={!draft.trim()}>決定</button>
+              <button className={'btn profile-save' + (draft.trim() ? ' ready' : '')} onClick={commitName} disabled={!draft.trim()}>
+                {draft.trim() ? '✓ 決定' : '名前を入力してください'}
+              </button>
             </div>
           ) : (
             <div className="profile-view">
