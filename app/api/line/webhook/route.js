@@ -5,7 +5,7 @@
 //   + モジュール選択 Quick Reply + セッション管理
 // =============================================================
 import { NextResponse } from 'next/server';
-import { verifySignature, replyText, replyMessages, textWithQuickReply, chunkMessages } from '@/lib/line';
+import { verifySignature, replyText, replyMessages, pushText, pushMessages, textWithQuickReply, chunkMessages } from '@/lib/line';
 import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript } from '@/lib/gemini';
 import { MODULES, MODULE_CATEGORIES } from '@/lib/havefun-data';
 import { getSession, setSession, clearSession, cleanupSessions } from '@/lib/line-session';
@@ -87,7 +87,7 @@ function parseSevenSteps(text) {
 function formatGradeResult(fb) {
   const scores = fb.scores || {};
   const labels = { tup: 'T-UP', conclusion: '結論', content: '内容', example: '一般例', workExample: '稼働例', reconclusion: '再結論', ap: 'AP' };
-  let scoreLines = Object.entries(labels).map(([k, l]) => `${l}: ${scores[k] ?? '-'}/10`).join('\n');
+  const scoreLines = Object.entries(labels).map(([k, l]) => `${l}: ${scores[k] ?? '-'}/10`).join('\n');
 
   return `━━━━━━━━━━━━━━━\n` +
     `🎯 合計: ${fb.total || 0}/70  ${fb.verdict || ''}\n` +
@@ -141,7 +141,15 @@ export async function POST(request) {
   // 定期クリーンアップ
   cleanupSessions();
 
-  await Promise.all(events.map((ev) => handleEvent(ev).catch(() => {})));
+  await Promise.all(events.map((ev) =>
+    handleEvent(ev).catch(async () => {
+      // 予期せぬ未捕捉エラーをユーザーへ通知（サイレント落ち防止）
+      const userId = ev.source?.userId;
+      if (userId) {
+        await pushText(userId, '⚠️ 予期せぬエラーが発生しました。もう一度お試しください。\n\nコマンド一覧は #ヘルプ').catch(() => {});
+      }
+    })
+  ));
   return NextResponse.json({ ok: true });
 }
 
@@ -207,14 +215,14 @@ async function handlePostback(ev, userId) {
 
   switch (command) {
     case 'grade': {
-      // セッションに「採点待ち」を保存
       setSession(userId, { action: 'grade', moduleId });
       await replyText(ev.replyToken, gradeTemplate(moduleId));
       break;
     }
 
     case 'model': {
-      // お��本生成（Gemini呼び出し→結果をreply）
+      // Gemini処理前にreplyTokenで「処理中」を即返信し、結果はpushで送る
+      await replyText(ev.replyToken, `⏳【${modName}】お手本を生成中です。少々お待ちください...`);
       try {
         const script = await modelScript('', moduleId);
         const result = `📝【${modName}】お手本スクリプト\n━━━━━━━━━━━━━━━\n\n${formatModelScript(script)}`;
@@ -222,9 +230,9 @@ async function handlePostback(ev, userId) {
           { label: '別のモジュール', text: '#お手本' },
           { label: '#採点', text: '#採点' },
         ]);
-        await replyMessages(ev.replyToken, msgs);
+        await pushMessages(userId, msgs);
       } catch (e) {
-        await replyText(ev.replyToken, `お手本生成でエラーが発生しました。もう一度お試しください。`);
+        await pushText(userId, `⚠️ お手本生成でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`).catch(() => {});
       }
       break;
     }
@@ -304,12 +312,16 @@ async function handleText(ev, userId) {
         `この単語を使ってモジュールの本質を説明してください！`);
       return;
     }
-    // 即採点
+    // 即採点: replyTokenで「処理中」→ pushで結果
+    await replyText(ev.replyToken, `⏳ こじつけを査定中です。少々お待ちください...`);
     try {
       const fb = await kojitsukeFeedback(word, output);
-      await replyText(ev.replyToken, formatKojitsuke(fb));
+      const msgs = chunkMessages(formatKojitsuke(fb), [
+        { label: 'もう1回', text: '#こじつけ' },
+      ]);
+      await pushMessages(userId, msgs);
     } catch (e) {
-      await replyText(ev.replyToken, 'こじつけ査定でエラーが発生しました。もう一度お試しください。');
+      await pushText(userId, `⚠️ こじつけ査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`).catch(() => {});
     }
     return;
   }
@@ -336,11 +348,16 @@ async function handleText(ev, userId) {
         '以下のフォーマットで送ってください：\n\n事象: （ネガ事象）\n捉え方: （リフレーミング）');
       return;
     }
+    // 即採点: replyTokenで「処理中」→ pushで結果
+    await replyText(ev.replyToken, `⏳ リフレーミングを査定中です。少々お待ちください...`);
     try {
       const fb = await reframeFeedback(situation, reframe);
-      await replyText(ev.replyToken, formatReframe(fb));
+      const msgs = chunkMessages(formatReframe(fb), [
+        { label: 'もう1回', text: '#リフレーム' },
+      ]);
+      await pushMessages(userId, msgs);
     } catch (e) {
-      await replyText(ev.replyToken, 'リフレーミング査定でエラーが発生しました。');
+      await pushText(userId, `⚠️ リフレーミング査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`).catch(() => {});
     }
     return;
   }
@@ -364,7 +381,6 @@ async function handleText(ev, userId) {
   if (session) {
     switch (session.action) {
       case 'grade': {
-        // 7ステップのテキストをパースして採点
         clearSession(userId);
         const steps = parseSevenSteps(text);
         steps.moduleId = session.moduleId;
@@ -378,6 +394,8 @@ async function handleText(ev, userId) {
           return;
         }
 
+        // Gemini処理前にreplyTokenで「処理中」を即返信し、結果はpushで送る
+        await replyText(ev.replyToken, '⏳ AIが採点中です。少々お待ちください...');
         try {
           const fb = await gradeOutput(steps);
           const modName = MODULES[session.moduleId]?.manual?.title || '';
@@ -386,15 +404,14 @@ async function handleText(ev, userId) {
             { label: 'もう1回採点', text: '#採点' },
             { label: 'お手本を見る', data: `model:${session.moduleId}`, displayText: '#お手本' },
           ]);
-          await replyMessages(ev.replyToken, msgs);
+          await pushMessages(userId, msgs);
         } catch (e) {
-          await replyText(ev.replyToken, `採点エラー: ${e.message || 'もう一度お試しください。'}`);
+          await pushText(userId, `⚠️ 採点でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`).catch(() => {});
         }
         return;
       }
 
       case 'kojitsuke_word': {
-        // 単語を受け取り、次は説明を待つ
         const word = text;
         setSession(userId, { action: 'kojitsuke_output', extra: { word } });
         await replyText(ev.replyToken,
@@ -404,56 +421,46 @@ async function handleText(ev, userId) {
       }
 
       case 'kojitsuke_output': {
-        // 説明を受け取って採点
         clearSession(userId);
         const word = session.extra?.word || '?';
+        await replyText(ev.replyToken, '⏳ こじつけを査定中です。少々お待ちください...');
         try {
           const fb = await kojitsukeFeedback(word, text);
-          const result = formatKojitsuke(fb);
-          const msgs = chunkMessages(result, [
+          const msgs = chunkMessages(formatKojitsuke(fb), [
             { label: 'もう1回', text: '#こじつけ' },
           ]);
-          await replyMessages(ev.replyToken, msgs);
+          await pushMessages(userId, msgs);
         } catch (e) {
-          await replyText(ev.replyToken, 'こじつけ査定エラー。もう一度お試しください。');
+          await pushText(userId, `⚠️ こじつけ査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`).catch(() => {});
         }
         return;
       }
 
       case 'reframe_input': {
-        // リフレーム入力
         clearSession(userId);
         const { situation, reframe } = parseReframeInput(text);
-        if (!situation && !reframe) {
-          // フォーマット無視の自由入力 → そのまま全体をリフレームとして査定
-          try {
-            const fb = await reframeFeedback('（LINEで送られた状況/捉え方）', text);
-            await replyText(ev.replyToken, formatReframe(fb));
-          } catch (e) {
-            await replyText(ev.replyToken, 'リフレーミング査定エラー。もう一度お試しください。');
-          }
-          return;
-        }
+        await replyText(ev.replyToken, '⏳ リフレーミングを査定中です。少々お待ちください...');
         try {
-          const fb = await reframeFeedback(situation, reframe);
-          const result = formatReframe(fb);
-          const msgs = chunkMessages(result, [
+          // フォーマット無視の自由入力の場合はテキスト全体をリフレームとして処理
+          const sit = situation || '（LINEで送られた状況/捉え方）';
+          const ref = reframe || text;
+          const fb = await reframeFeedback(sit, ref);
+          const msgs = chunkMessages(formatReframe(fb), [
             { label: 'もう1回', text: '#リフレーム' },
           ]);
-          await replyMessages(ev.replyToken, msgs);
+          await pushMessages(userId, msgs);
         } catch (e) {
-          await replyText(ev.replyToken, 'リフレーミング査定エラー。もう一度お試しください。');
+          await pushText(userId, `⚠️ リフレーミング査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`).catch(() => {});
         }
         return;
       }
 
       case 'reverse': {
-        // 逆質問モード：ユーザーの説明をGeminiに渡してFBを返す
         clearSession(userId);
         const moduleId = session.moduleId;
         const modName = MODULES[moduleId]?.manual?.title || '';
+        await replyText(ev.replyToken, `⏳【${modName}】理解度をチェック中です。少々お待ちください...`);
         try {
-          // 逆質問はgradeOutputの簡易版として扱う（ユーザーの自由説明を評価）
           const steps = {
             moduleId,
             tup: '',
@@ -474,36 +481,43 @@ async function handleText(ev, userId) {
             { label: 'もう1回', data: `reverse:${moduleId}`, displayText: '#逆質問' },
             { label: 'お手本を見る', data: `model:${moduleId}`, displayText: '#お手本' },
           ]);
-          await replyMessages(ev.replyToken, msgs);
+          await pushMessages(userId, msgs);
         } catch (e) {
-          await replyText(ev.replyToken, '逆質問査定エラー。もう一度お試しください。');
+          await pushText(userId, `⚠️ 逆質問査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`).catch(() => {});
         }
         return;
       }
     }
   }
 
-  // ---- セッションなし・コマンドなし → デフォルト（リフレーム査定） ----
-  // 何のコマンドもなく自由にテキストを送った場合、リフレーム査定として処理
+  // ---- セッションなし・コマンドなし ----
+  // セッション切れの可能性があるので、7ステップっぽい入力には案内を返す
+  const looksLikeSteps = /[1１][.．]/.test(text) && /[7７][.．]/.test(text);
+  if (looksLikeSteps) {
+    await replyText(ev.replyToken,
+      'セッションが切れているかもしれません。\n\n' +
+      '#採点 からモジュールを選び直して、もう一度送ってください。');
+    return;
+  }
+
+  // それ以外は自由リフレーム査定
+  await replyText(ev.replyToken, '⏳ リフレーミングを査定中です。少々お待ちください...');
   try {
     const fb = await reframeFeedback('（ユーザーがLINEで自由に送った状況/捉え方）', text);
-    const result = formatReframe(fb);
-    const msgs = chunkMessages(result, [
+    const msgs = chunkMessages(formatReframe(fb), [
       { label: '#採点', text: '#採点' },
       { label: '#お手本', text: '#お手本' },
       { label: '#こじつけ', text: '#こじつけ' },
       { label: '#ヘルプ', text: '#ヘルプ' },
     ]);
-    await replyMessages(ev.replyToken, msgs);
+    await pushMessages(userId, msgs);
   } catch (e) {
-    await replyText(ev.replyToken,
-      'エラーが発生しました。\n\nコマンド一覧は #ヘルプ で確認できます。');
+    await pushText(userId, `⚠️ エラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）\n\nコマンド一覧は #ヘルプ`).catch(() => {});
   }
 }
 
 // ── リフレーム入力パーサー ──
 function parseReframeInput(text) {
-  // "事象: xxx\n捉え方: yyy" or "状況: xxx\nリフレーム: yyy"
   const situationMatch = text.match(/(?:事象|状況|ネガ)[：:]\s*([\s\S]*?)(?=\n\s*(?:捉え方|リフレーム|変換)[：:])/i);
   const reframeMatch = text.match(/(?:捉え方|リフレーム|変換)[：:]\s*([\s\S]*?)$/i);
 
