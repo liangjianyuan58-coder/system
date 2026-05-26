@@ -13,6 +13,9 @@ import { getSession, setSession, clearSession, cleanupSessions } from '@/lib/lin
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+// デバッグ用バージョン番号（エラーメッセージに含めてどのコードが動いているか確認）
+const CODE_VERSION = 'v4';
+
 // ══════════════════════════════════════
 // 安全な送信ヘルパー
 // ══════════════════════════════════════
@@ -198,7 +201,8 @@ export async function POST(request) {
       console.error('[handleEvent] uncaught error:', e);
       const userId = ev.source?.userId;
       if (userId) {
-        await pushText(userId, '⚠️ 予期せぬエラーが発生しました。もう一度お試しください。\n\nコマンド一覧は #ヘルプ').catch(() => {});
+        const msg = e?.message ? `\n(${e.message})` : '';
+        await pushText(userId, `⚠️ [${CODE_VERSION}] 予期せぬエラーが発生しました。もう一度お試しください。${msg}\n\nコマンド一覧は #ヘルプ`).catch(() => {});
       }
     })
   ));
