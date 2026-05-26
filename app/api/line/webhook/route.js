@@ -175,6 +175,12 @@ async function runGrade(userId, moduleId, steps) {
         workExample: steps.workExample || '',
         reconclusion: steps.reconclusion || '',
         ap: steps.ap || '',
+        module: MODULES[moduleId]?.manual?.title || '',
+        total: fb.total != null ? `${fb.total}/70` : '',
+        verdict: fb.verdict || '',
+        good: fb.good || '',
+        improvements: Array.isArray(fb.improvements) ? fb.improvements.join(' / ') : (fb.improvements || ''),
+        comment: fb.comment || '',
       });
       saveNote = `\n\n📊 スプレッドシートに記録しました（${displayName}）`;
     } catch (saveErr) {
