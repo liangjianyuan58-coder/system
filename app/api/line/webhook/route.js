@@ -5,7 +5,8 @@
 //   + モジュール選択 Quick Reply + セッション管理
 // =============================================================
 import { NextResponse } from 'next/server';
-import { verifySignature, replyText, replyMessages, textWithQuickReply, chunkMessages } from '@/lib/line';
+import { verifySignature, replyText, replyMessages, textWithQuickReply, chunkMessages, getProfile } from '@/lib/line';
+import { appendOutput } from '@/lib/sheet';
 import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript } from '@/lib/gemini';
 import { MODULES, MODULE_CATEGORIES } from '@/lib/havefun-data';
 import { getSession, setSession, clearSession, cleanupSessions } from '@/lib/line-session';
@@ -387,6 +388,24 @@ async function handleText(ev, userId) {
             { label: 'お手本を見る', data: `model:${session.moduleId}`, displayText: '#お手本' },
           ]);
           await replyMessages(ev.replyToken, msgs);
+
+          // スプレッドシートへ保存（採点と並行して非同期実行。失敗しても返信には影響させない）
+          (async () => {
+            try {
+              const profile = await getProfile(userId);
+              await appendOutput({
+                userId: userId || '',
+                name: profile.displayName || userId || '(名無し)',
+                tup: steps.tup,
+                conclusion: steps.conclusion,
+                content: steps.content,
+                example: steps.example,
+                workExample: steps.workExample,
+                reconclusion: steps.reconclusion,
+                ap: steps.ap,
+              });
+            } catch (_) {}
+          })();
         } catch (e) {
           await replyText(ev.replyToken, `採点エラー: ${e.message || 'もう一度お試しください。'}`);
         }
