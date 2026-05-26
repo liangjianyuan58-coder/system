@@ -98,25 +98,55 @@ function gradeTemplate(moduleId) {
 // ── 7ステップのテキストをパース ──
 function parseSevenSteps(text) {
   const keys = ['tup', 'conclusion', 'content', 'example', 'workExample', 'reconclusion', 'ap'];
-  const labels = ['T-UP', '結論', '内容', '一般的な例', '稼働における例', '再結論', 'AP'];
   const result = {};
 
-  const parts = text.split(/(?:^|\n)\s*[１-７1-7][.．:：\s]/);
+  // 番号付き行でスプリット: "1." "2." ... "7."（全角・半角・スペースあり対応）
+  const parts = text.split(/(?:^|\n)\s*[１-７1-7]\s*[.．:：\s]/);
 
   if (parts.length >= 8) {
+    // parts[0] はヘッダー、parts[1]〜parts[7] が各ステップ
     for (let i = 0; i < 7; i++) {
-      result[keys[i]] = (parts[i + 1] || '').replace(/^[^:：]*[：:]?\s*/, '').trim();
+      // ラベル部分（"T-UP:" など）を除去して内容だけ取り出す
+      result[keys[i]] = (parts[i + 1] || '').replace(/^[^\n]*[\n]/, '').trim()
+        || (parts[i + 1] || '').replace(/^[^:：]*[：:]?\s*/, '').trim();
     }
   } else {
-    for (let i = 0; i < 7; i++) {
-      const regex = new RegExp(`(?:${i + 1}[.．]?\\s*)?${labels[i]}[：:]?\\s*([\\s\\S]*?)(?=(?:\\n\\s*(?:[１-７1-7][.．]|${labels[i + 1] || '$END$'}))`, 'i');
-      const m = text.match(regex);
-      result[keys[i]] = m ? m[1].trim() : '';
+    // スプリットがうまくいかない場合: ラベルで区切って取り出す
+    const stepMarkers = [
+      { key: 'tup', patterns: [/(?:^|\n)\s*1\s*[.．:：]?\s*T[-\s]?UP[^:：\n]*[：:]?\s*/i] },
+      { key: 'conclusion', patterns: [/(?:^|\n)\s*2\s*[.．:：]?\s*結論[^:：\n]*[：:]?\s*/i] },
+      { key: 'content', patterns: [/(?:^|\n)\s*3\s*[.．:：]?\s*内容[^:：\n]*[：:]?\s*/i] },
+      { key: 'example', patterns: [/(?:^|\n)\s*4\s*[.．:：]?\s*一般[^:：\n]*[：:]?\s*/i] },
+      { key: 'workExample', patterns: [/(?:^|\n)\s*5\s*[.．:：]?\s*稼働[^:：\n]*[：:]?\s*/i] },
+      { key: 'reconclusion', patterns: [/(?:^|\n)\s*6\s*[.．:：]?\s*再結論[^:：\n]*[：:]?\s*/i] },
+      { key: 'ap', patterns: [/(?:^|\n)\s*7\s*[.．:：]?\s*AP[^:：\n]*[：:]?\s*/i] },
+    ];
+
+    // 各ステップの開始位置を特定
+    const positions = stepMarkers.map(({ key, patterns }) => {
+      for (const pat of patterns) {
+        const m = text.match(pat);
+        if (m) return { key, index: m.index + m[0].length - (m[0].endsWith('\n') ? 1 : 0), matchLen: m[0].length };
+      }
+      return { key, index: -1, matchLen: 0 };
+    }).filter((p) => p.index >= 0).sort((a, b) => a.index - b.index);
+
+    for (let i = 0; i < positions.length; i++) {
+      const start = positions[i].index;
+      const end = i + 1 < positions.length ? positions[i + 1].index - positions[i + 1].matchLen : text.length;
+      result[positions[i].key] = text.slice(start, end).trim();
     }
+
+    // 最後のAPが取れない場合のフォールバック
     if (!result.ap) {
-      const apMatch = text.match(/(?:7[.．]?\s*)?AP[：:]\s*([\s\S]*?)$/i);
+      const apMatch = text.match(/(?:7\s*[.．]?\s*)?AP[：:][^\n]*\n?([\s\S]*?)$/i);
       if (apMatch) result.ap = apMatch[1].trim();
     }
+  }
+
+  // 空文字のフィールドは確実に空文字に
+  for (const k of keys) {
+    if (!result[k]) result[k] = '';
   }
 
   return result;
