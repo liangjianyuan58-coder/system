@@ -9,7 +9,7 @@ import { verifySignature, replyText, replyMessages, pushText, pushMessages, text
 import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript } from '@/lib/gemini';
 import { MODULES, MODULE_CATEGORIES, ACTIVE_MODULE } from '@/lib/havefun-data';
 import { getSession, setSession, clearSession, cleanupSessions } from '@/lib/line-session';
-import { appendOutput } from '@/lib/sheet';
+import { appendOutput, appendActivity } from '@/lib/sheet';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -196,6 +196,61 @@ async function runGrade(userId, moduleId, steps) {
   } catch (e) {
     console.error('[runGrade] error:', e);
     await sendError(userId, `採点でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`);
+  }
+}
+
+// ── こじつけを実行してpushで結果を送る（+記録）──
+async function runKojitsuke(userId, word, output) {
+  try {
+    const fb = await kojitsukeFeedback(word, output);
+    let saveNote = '';
+    try {
+      const profile = await getUserProfile(userId);
+      const displayName = profile?.displayName || '(名無し)';
+      await appendActivity({
+        userId, name: displayName, type: 'こじつけ',
+        keyword: word, userInput: output,
+        total: fb.score != null ? `${fb.score}/10` : '',
+        good: fb.good || '',
+        improvements: fb.improvement || '',
+        aiExample: fb.example || '',
+      });
+      saveNote = `\n\n📊 記録しました（${displayName}）`;
+    } catch (saveErr) {
+      console.error('[runKojitsuke] save error:', saveErr);
+    }
+    await pushMessages(userId, chunkMessages(formatKojitsuke(fb) + saveNote, [{ label: 'もう1回', text: '#こじつけ' }]));
+  } catch (e) {
+    console.error('[runKojitsuke] error:', e);
+    await sendError(userId, `こじつけ査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`);
+  }
+}
+
+// ── リフレームを実行してpushで結果を送る（+記録）──
+async function runReframe(userId, situation, reframe, quickReplyItems) {
+  try {
+    const fb = await reframeFeedback(situation, reframe);
+    let saveNote = '';
+    try {
+      const profile = await getUserProfile(userId);
+      const displayName = profile?.displayName || '(名無し)';
+      await appendActivity({
+        userId, name: displayName, type: 'リフレーム',
+        keyword: situation, userInput: reframe,
+        total: fb.score != null ? `${fb.score}/10` : '',
+        good: fb.good || '',
+        improvements: fb.improvement || '',
+        aiExample: fb.example || '',
+      });
+      saveNote = `\n\n📊 記録しました（${displayName}）`;
+    } catch (saveErr) {
+      console.error('[runReframe] save error:', saveErr);
+    }
+    const items = quickReplyItems || [{ label: 'もう1回', text: '#リフレーム' }];
+    await pushMessages(userId, chunkMessages(formatReframe(fb) + saveNote, items));
+  } catch (e) {
+    console.error('[runReframe] error:', e);
+    await sendError(userId, `リフレーミング査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`);
   }
 }
 
@@ -405,13 +460,7 @@ async function handleText(ev, userId) {
       return;
     }
     await replyProcessing(ev.replyToken, '⏳ こじつけを査定中です。少々お待ちください...');
-    try {
-      const fb = await kojitsukeFeedback(word, output);
-      await pushMessages(userId, chunkMessages(formatKojitsuke(fb), [{ label: 'もう1回', text: '#こじつけ' }]));
-    } catch (e) {
-      console.error('[kojitsuke] error:', e);
-      await sendError(userId, `こじつけ査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`);
-    }
+    await runKojitsuke(userId, word, output);
     return;
   }
 
@@ -436,13 +485,7 @@ async function handleText(ev, userId) {
       return;
     }
     await replyProcessing(ev.replyToken, '⏳ リフレーミングを査定中です。少々お待ちください...');
-    try {
-      const fb = await reframeFeedback(situation, reframe);
-      await pushMessages(userId, chunkMessages(formatReframe(fb), [{ label: 'もう1回', text: '#リフレーム' }]));
-    } catch (e) {
-      console.error('[reframe] error:', e);
-      await sendError(userId, `リフレーミング査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`);
-    }
+    await runReframe(userId, situation, reframe);
     return;
   }
 
@@ -492,13 +535,7 @@ async function handleText(ev, userId) {
         clearSession(userId);
         const word = session.extra?.word || '?';
         await replyProcessing(ev.replyToken, '⏳ こじつけを査定中です。少々お待ちください...');
-        try {
-          const fb = await kojitsukeFeedback(word, text);
-          await pushMessages(userId, chunkMessages(formatKojitsuke(fb), [{ label: 'もう1回', text: '#こじつけ' }]));
-        } catch (e) {
-          console.error('[kojitsuke_output] error:', e);
-          await sendError(userId, `こじつけ査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`);
-        }
+        await runKojitsuke(userId, word, text);
         return;
       }
 
@@ -506,15 +543,7 @@ async function handleText(ev, userId) {
         clearSession(userId);
         const { situation, reframe } = parseReframeInput(text);
         await replyProcessing(ev.replyToken, '⏳ リフレーミングを査定中です。少々お待ちください...');
-        try {
-          const sit = situation || '（LINEで送られた状況/捉え方）';
-          const ref = reframe || text;
-          const fb = await reframeFeedback(sit, ref);
-          await pushMessages(userId, chunkMessages(formatReframe(fb), [{ label: 'もう1回', text: '#リフレーム' }]));
-        } catch (e) {
-          console.error('[reframe_input] error:', e);
-          await sendError(userId, `リフレーミング査定でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`);
-        }
+        await runReframe(userId, situation || '（LINEで送られた状況/捉え方）', reframe || text);
         return;
       }
 
@@ -526,11 +555,27 @@ async function handleText(ev, userId) {
         try {
           const steps = { moduleId, tup: '', conclusion: text, content: text, example: '', workExample: '', reconclusion: '', ap: '' };
           const fb = await gradeOutput(steps);
+          let saveNote = '';
+          try {
+            const profile = await getUserProfile(userId);
+            const displayName = profile?.displayName || '(名無し)';
+            await appendActivity({
+              userId, name: displayName, type: '逆質問',
+              module: modName, userInput: text,
+              total: fb.total != null ? `${fb.total}/70` : '',
+              good: fb.good || '',
+              improvements: Array.isArray(fb.improvements) ? fb.improvements.join(' / ') : (fb.improvements || ''),
+              comment: fb.comment || '',
+            });
+            saveNote = `\n\n📊 記録しました（${displayName}）`;
+          } catch (saveErr) {
+            console.error('[reverse] save error:', saveErr);
+          }
           const result = `❓【${modName}】理解度チェック結果\n\n` +
             `🎯 スコア: ${fb.total || 0}/70\n\n` +
             `✅ Good:\n${fb.good || '-'}\n\n` +
             `💡 改善ポイント:\n${(fb.improvements || []).map((s, i) => `${i + 1}. ${s}`).join('\n') || '-'}\n\n` +
-            `🔥 コメント:\n${fb.comment || '-'}`;
+            `🔥 コメント:\n${fb.comment || '-'}` + saveNote;
           await pushMessages(userId, chunkMessages(result, [
             { label: 'もう1回', data: `reverse:${moduleId}`, displayText: '#逆質問' },
             { label: 'お手本を見る', data: `model:${moduleId}`, displayText: '#お手本' },
@@ -566,18 +611,12 @@ async function handleText(ev, userId) {
 
   // それ以外は自由リフレーム査定
   await replyProcessing(ev.replyToken, '⏳ リフレーミングを査定中です。少々お待ちください...');
-  try {
-    const fb = await reframeFeedback('（ユーザーがLINEで自由に送った状況/捉え方）', text);
-    await pushMessages(userId, chunkMessages(formatReframe(fb), [
-      { label: '#採点', text: '#採点' },
-      { label: '#お手本', text: '#お手本' },
-      { label: '#こじつけ', text: '#こじつけ' },
-      { label: '#ヘルプ', text: '#ヘルプ' },
-    ]));
-  } catch (e) {
-    console.error('[default reframe] error:', e);
-    await sendError(userId, `エラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）\n\nコマンド一覧は #ヘルプ`);
-  }
+  await runReframe(userId, '（ユーザーがLINEで自由に送った状況/捉え方）', text, [
+    { label: '#採点', text: '#採点' },
+    { label: '#お手本', text: '#お手本' },
+    { label: '#こじつけ', text: '#こじつけ' },
+    { label: '#ヘルプ', text: '#ヘルプ' },
+  ]);
 }
 
 // ── リフレーム入力パーサー ──
