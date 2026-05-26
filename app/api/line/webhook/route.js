@@ -5,10 +5,11 @@
 //   + モジュール選択 Quick Reply + セッション管理
 // =============================================================
 import { NextResponse } from 'next/server';
-import { verifySignature, replyText, replyMessages, pushText, pushMessages, textWithQuickReply, chunkMessages } from '@/lib/line';
+import { verifySignature, replyText, replyMessages, pushText, pushMessages, textWithQuickReply, chunkMessages, getUserProfile } from '@/lib/line';
 import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript } from '@/lib/gemini';
-import { MODULES, MODULE_CATEGORIES } from '@/lib/havefun-data';
+import { MODULES, MODULE_CATEGORIES, ACTIVE_MODULE } from '@/lib/havefun-data';
 import { getSession, setSession, clearSession, cleanupSessions } from '@/lib/line-session';
+import { appendOutput } from '@/lib/sheet';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -152,13 +153,36 @@ function parseSevenSteps(text) {
   return result;
 }
 
-// ── 採点を実行してpushで結果を送る共通処理 ──
+// ── 採点を実行してpushで結果を送る共通処理（採点+スプレッドシート記録）──
 async function runGrade(userId, moduleId, steps) {
   try {
     const fb = await gradeOutput(steps);
     const modName = MODULES[moduleId]?.manual?.title || '';
-    const result = `📋【${modName}】採点結果\n${formatGradeResult(fb)}`;
-    const msgs = chunkMessages(result, [
+    const gradeText = `📋【${modName}】採点結果\n${formatGradeResult(fb)}`;
+
+    // スプレッドシートに記録
+    let saveNote = '';
+    try {
+      const profile = await getUserProfile(userId);
+      const displayName = profile?.displayName || '(名無し)';
+      await appendOutput({
+        userId,
+        name: displayName,
+        tup: steps.tup || '',
+        conclusion: steps.conclusion || '',
+        content: steps.content || '',
+        example: steps.example || '',
+        workExample: steps.workExample || '',
+        reconclusion: steps.reconclusion || '',
+        ap: steps.ap || '',
+      });
+      saveNote = `\n\n📊 スプレッドシートに記録しました（${displayName}）`;
+    } catch (saveErr) {
+      console.error('[runGrade] save error:', saveErr);
+      saveNote = `\n\n⚠️ 記録エラー: ${saveErr.message || '記録に失敗しました'}`;
+    }
+
+    const msgs = chunkMessages(gradeText + saveNote, [
       { label: 'もう1回採点', text: '#採点' },
       { label: 'お手本を見る', data: `model:${moduleId}`, displayText: '#お手本' },
     ]);
@@ -515,26 +539,22 @@ async function handleText(ev, userId) {
   }
 
   // ---- セッションなし・コマンドなし ----
-  // 7ステップ形式の入力はヘッダーからモジュールを特定して採点（セッション切れ対応）
+  // 7ステップ形式の入力は採点+記録（ヘッダーからモジュール特定、なければデフォルト）
   const looksLikeSteps = /[1１][.．]/.test(text) && /[7７][.．]/.test(text);
   if (looksLikeSteps) {
-    const detectedModuleId = detectModuleId(text);
-    if (detectedModuleId) {
-      const steps = parseSevenSteps(text);
-      steps.moduleId = detectedModuleId;
-      const filled = Object.values(steps).filter((v) => typeof v === 'string' && v.length > 0).length;
-      if (filled < 3) {
-        await safeReply(ev.replyToken, userId,
-          '入力が足りないようです。\n7ステップのフォーマットで送り直してください。\n\n' +
-          '（もう一度 #採点 から始めることもできます）');
-        return;
-      }
-      await replyProcessing(ev.replyToken, '⏳ AIが採点中です。少々お待ちください...');
-      await runGrade(userId, detectedModuleId, steps);
-    } else {
+    // ヘッダー【モジュール名】があれば特定、なければ ACTIVE_MODULE をデフォルトに
+    const detectedModuleId = detectModuleId(text) || ACTIVE_MODULE;
+    const steps = parseSevenSteps(text);
+    steps.moduleId = detectedModuleId;
+    const filled = Object.values(steps).filter((v) => typeof v === 'string' && v.length > 0).length;
+    if (filled < 3) {
       await safeReply(ev.replyToken, userId,
-        '#採点 からモジュールを選んでテンプレートをコピーし、各項目を埋めて送ってください。');
+        '入力が足りないようです。\n7ステップのフォーマットで送り直してください。\n\n' +
+        '（もう一度 #採点 から始めることもできます）');
+      return;
     }
+    await replyProcessing(ev.replyToken, '⏳ AIが採点中です。少々お待ちください...');
+    await runGrade(userId, detectedModuleId, steps);
     return;
   }
 
