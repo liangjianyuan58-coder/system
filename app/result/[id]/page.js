@@ -17,7 +17,13 @@ function barColor(score) {
 
 export default async function ResultPage({ params }) {
   const { id } = await params;
-  const result = await getOutputById(id);
+
+  let result = null;
+  try {
+    result = await getOutputById(id);
+  } catch (err) {
+    console.error('[result page] getOutputById error:', err?.message || err);
+  }
   if (!result) notFound();
 
   let fb = null;
