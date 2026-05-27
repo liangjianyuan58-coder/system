@@ -230,8 +230,14 @@ function OutputFeedback({ fb, stepLabels }) {
         ))}
       </div>
       {fb.good && <p className="fb-block fb-good"><b>◎ Good</b>{fb.good}</p>}
-      {fb.tupCheck && <p className="fb-block"><b>T-UP判定</b>{fb.tupCheck}</p>}
-      {fb.apCheck && <p className="fb-block"><b>AP判定</b>{fb.apCheck}</p>}
+      {fb.tupCheck && <p className="fb-block"><b>T-UPチェック</b>{fb.tupCheck}</p>}
+      {fb.apTupCheck && <p className="fb-block"><b>APのT-UPチェック</b>{fb.apTupCheck}</p>}
+      {fb.apCheck && <p className="fb-block"><b>APチェック</b>{fb.apCheck}</p>}
+      {fb.consistencyCheck && <p className="fb-block"><b>内容→例→AP 一貫性</b>{fb.consistencyCheck}</p>}
+      {fb.impulseFactorCheck && <p className="fb-block"><b>インパルスファクター</b>{fb.impulseFactorCheck}</p>}
+      {fb.approachTechniquesCheck && <p className="fb-block"><b>アプローチ話法</b>{fb.approachTechniquesCheck}</p>}
+      {fb.stepsCheck && <p className="fb-block"><b>5ステップス構成</b>{fb.stepsCheck}</p>}
+      {fb.clarityCheck && <p className="fb-block"><b>初めて聴く人チェック</b>{fb.clarityCheck}</p>}
       {Array.isArray(fb.improvements) && fb.improvements.length > 0 && (
         <div className="fb-block"><b>△ 改善ポイント</b><ul className="fb-improve">{fb.improvements.map((t, i) => <li key={i}>{t}</li>)}</ul></div>
       )}

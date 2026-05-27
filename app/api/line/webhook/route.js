@@ -165,12 +165,17 @@ async function runGrade(userId, replyToken, moduleId, steps) {
     const fb = await gradeOutput(steps);
     const modName = MODULES[moduleId]?.manual?.title || '';
 
-    // スプレッドシートに記録（IDを生成して返してもらう）
-    let resultUrl = null;
+    // 結果IDを事前生成してURLを確定（スプレッドシートにも同じURLを保存）
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+    const resultId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+    const resultUrl = appUrl ? `${appUrl}/result/${resultId}` : null;
+
     try {
       const profile = await getUserProfile(userId);
       const displayName = profile?.displayName || '(名無し)';
-      const saved = await appendOutput({
+      await appendOutput({
+        id: resultId,
         userId,
         name: displayName,
         tup: steps.tup || '',
@@ -188,10 +193,8 @@ async function runGrade(userId, replyToken, moduleId, steps) {
         improvements: Array.isArray(fb.improvements) ? fb.improvements.join(' / ') : (fb.improvements || ''),
         comment: fb.comment || '',
         rawJson: JSON.stringify(fb),
+        resultUrl: resultUrl || '',
       });
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL
-        || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
-      if (appUrl && saved?.id) resultUrl = `${appUrl}/result/${saved.id}`;
     } catch (saveErr) {
       console.error('[runGrade] save error:', saveErr);
     }
