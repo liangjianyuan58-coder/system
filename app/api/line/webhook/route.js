@@ -163,14 +163,13 @@ async function runGrade(userId, moduleId, steps) {
   try {
     const fb = await gradeOutput(steps);
     const modName = MODULES[moduleId]?.manual?.title || '';
-    const gradeText = `📋【${modName}】採点結果\n${formatGradeResult(fb)}`;
 
-    // スプレッドシートに記録
-    let saveNote = '';
+    // スプレッドシートに記録（IDを生成して返してもらう）
+    let resultUrl = null;
     try {
       const profile = await getUserProfile(userId);
       const displayName = profile?.displayName || '(名無し)';
-      await appendOutput({
+      const saved = await appendOutput({
         userId,
         name: displayName,
         tup: steps.tup || '',
@@ -187,14 +186,17 @@ async function runGrade(userId, moduleId, steps) {
         good: fb.good || '',
         improvements: Array.isArray(fb.improvements) ? fb.improvements.join(' / ') : (fb.improvements || ''),
         comment: fb.comment || '',
+        rawJson: JSON.stringify(fb),
       });
-      saveNote = `\n\n📊 スプレッドシートに記録しました（${displayName}）`;
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL
+        || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+      if (appUrl && saved?.id) resultUrl = `${appUrl}/result/${saved.id}`;
     } catch (saveErr) {
       console.error('[runGrade] save error:', saveErr);
-      saveNote = `\n\n⚠️ 記録エラー: ${saveErr.message || '記録に失敗しました'}`;
     }
 
-    const msgs = chunkMessages(gradeText + saveNote, [
+    const gradeText = `📋【${modName}】採点結果\n${formatGradeResultShort(fb, resultUrl)}`;
+    const msgs = chunkMessages(gradeText, [
       { label: 'もう1回採点', text: '#採点' },
       { label: 'お手本を見る', data: `model:${moduleId}`, displayText: '#お手本' },
     ]);
@@ -260,7 +262,19 @@ async function runReframe(userId, situation, reframe, quickReplyItems) {
   }
 }
 
-// ── 採点結果フォーマット ──
+// ── 採点結果フォーマット（LINE用ショート版）──
+function formatGradeResultShort(fb, resultUrl) {
+  const improvements = (fb.improvements || []).slice(0, 2)
+    .map((s, i) => `${i + 1}. ${s}`).join('\n');
+  return `━━━━━━━━━━━━━━━\n` +
+    `🎯 合計: ${fb.total || 0}/80  ${fb.verdict || ''}\n` +
+    `━━━━━━━━━━━━━━━\n\n` +
+    `✅ Good:\n${fb.good || '-'}\n\n` +
+    `💡 改善ポイント:\n${improvements || '-'}` +
+    (resultUrl ? `\n\n📱 詳細を見る:\n${resultUrl}` : '');
+}
+
+// ── 採点結果フォーマット（フル版・予備）──
 function formatGradeResult(fb) {
   const scores = fb.scores || {};
   const labels = { tup: 'T-UP', conclusion: '結論', content: '内容', example: '一般例', workExample: '稼働例', reconclusion: '再結論', apTup: 'APのT-UP', ap: 'AP' };
