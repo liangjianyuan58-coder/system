@@ -182,7 +182,7 @@ async function runGrade(userId, moduleId, steps) {
         apTup: steps.apTup || '',
         ap: steps.ap || '',
         module: MODULES[moduleId]?.manual?.title || '',
-        total: fb.total != null ? `${fb.total}/70` : '',
+        total: fb.total != null ? `${fb.total}/80` : '',
         verdict: fb.verdict || '',
         good: fb.good || '',
         improvements: Array.isArray(fb.improvements) ? fb.improvements.join(' / ') : (fb.improvements || ''),
@@ -277,6 +277,7 @@ function formatGradeResult(fb) {
     `⚡ インパルスファクターチェック:\n${fb.impulseFactorCheck || '-'}\n\n` +
     `🛠 アプローチ話法チェック:\n${fb.approachTechniquesCheck || '-'}\n\n` +
     `🪜 5ステップスチェック:\n${fb.stepsCheck || '-'}\n\n` +
+    `👁 初めて聴く人チェック:\n${fb.clarityCheck || '-'}\n\n` +
     `💡 改善ポイント:\n${(fb.improvements || []).map((s, i) => `${i + 1}. ${s}`).join('\n') || '-'}\n\n` +
     `🔥 コメント:\n${fb.comment || '-'}`;
 }
@@ -572,7 +573,7 @@ async function handleText(ev, userId) {
             await appendActivity({
               userId, name: displayName, type: '逆質問',
               module: modName, userInput: text,
-              total: fb.total != null ? `${fb.total}/70` : '',
+              total: fb.total != null ? `${fb.total}/80` : '',
               good: fb.good || '',
               improvements: Array.isArray(fb.improvements) ? fb.improvements.join(' / ') : (fb.improvements || ''),
               comment: fb.comment || '',
@@ -582,7 +583,7 @@ async function handleText(ev, userId) {
             console.error('[reverse] save error:', saveErr);
           }
           const result = `❓【${modName}】理解度チェック結果\n\n` +
-            `🎯 スコア: ${fb.total || 0}/70\n\n` +
+            `🎯 スコア: ${fb.total || 0}/80\n\n` +
             `✅ Good:\n${fb.good || '-'}\n\n` +
             `💡 改善ポイント:\n${(fb.improvements || []).map((s, i) => `${i + 1}. ${s}`).join('\n') || '-'}\n\n` +
             `🔥 コメント:\n${fb.comment || '-'}` + saveNote;
