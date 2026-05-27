@@ -4,8 +4,16 @@
 // =============================================================
 import { getOutputById } from '@/lib/sheet';
 import { notFound } from 'next/navigation';
+import styles from './result.module.css';
 
 export const dynamic = 'force-dynamic';
+
+function barColor(score) {
+  if (score >= 9) return '#22c55e';
+  if (score >= 7) return '#84cc16';
+  if (score >= 5) return '#f59e0b';
+  return '#ef4444';
+}
 
 export default async function ResultPage({ params }) {
   const { id } = await params;
@@ -35,91 +43,114 @@ export default async function ResultPage({ params }) {
     : '';
 
   const checks = [
-    ['🔍 T-UPチェック', fb?.tupCheck],
-    ['🔍 APのT-UPチェック', fb?.apTupCheck],
-    ['🔍 APチェック', fb?.apCheck],
-    ['🔗 内容→例→AP一貫性', fb?.consistencyCheck],
-    ['⚡ インパルスファクター', fb?.impulseFactorCheck],
-    ['🛠 アプローチ話法', fb?.approachTechniquesCheck],
-    ['🪜 5ステップス構成', fb?.stepsCheck],
-    ['👁 初めて聴く人チェック', fb?.clarityCheck],
+    ['T-UPチェック', fb?.tupCheck],
+    ['APのT-UPチェック', fb?.apTupCheck],
+    ['APチェック', fb?.apCheck],
+    ['内容→例→AP 一貫性', fb?.consistencyCheck],
+    ['インパルスファクター', fb?.impulseFactorCheck],
+    ['アプローチ話法', fb?.approachTechniquesCheck],
+    ['5ステップス構成', fb?.stepsCheck],
+    ['初めて聴く人チェック', fb?.clarityCheck],
   ].filter(([, v]) => v);
 
   return (
-    <>
-      <div className="scanlines" />
-      <div className="screen">
-        <header className="app-header">
-          <p className="app-header__sub">SCORE RESULT</p>
-          <h1 className="app-header__title" style={{ fontSize: 'clamp(18px,6vw,28px)' }}>採点結果</h1>
-          {result.module && <p className="app-header__reading">{result.module}</p>}
+    <div className={styles.page}>
+      <div className={styles.container}>
+
+        {/* ヘッダー */}
+        <header className={styles.header}>
+          <p className={styles.headerLabel}>採点結果</p>
+          <h1 className={styles.headerTitle}>{result.module || 'アウトプット採点'}</h1>
           {result.name && result.name !== '(名無し)' && (
-            <p style={{ color: 'var(--dim)', fontSize: 12, margin: '2px 0 0' }}>{result.name}</p>
+            <p className={styles.headerMeta}>{result.name}</p>
           )}
-          {ts && <p style={{ color: 'var(--dim)', fontSize: 11, margin: '2px 0 0' }}>{ts}</p>}
+          {ts && <p className={styles.headerMeta}>{ts}</p>}
         </header>
 
         {/* 合計スコア・判定 */}
-        <div className={`fb-verdict ${isPassed ? 'pass' : 'fail'}`}>
-          <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 6 }}>
-            {fb?.total ?? '-'}<span style={{ fontSize: 18 }}>/80</span>
+        <div className={styles.scoreCard}>
+          <div
+            className={styles.scoreNumber}
+            style={{ color: isPassed ? '#15803d' : '#c2410c' }}
+          >
+            {fb?.total ?? '-'}
+            <span className={styles.scoreMax}>/80</span>
           </div>
-          <div>{fb?.verdict ?? '-'}</div>
+          <div className={`${styles.verdict} ${isPassed ? styles.pass : styles.fail}`}>
+            {fb?.verdict ?? '-'}
+          </div>
         </div>
 
         {/* 各ステップのスコア */}
         {fb && (
-          <div className="window">
-            <p className="window__title">📊 各ステップ</p>
-            <div className="fb-scores">
-              {scoreLabels.map(([k, l]) => (
-                <div key={k} className="fb-score">
-                  <span className="fb-score__label">{l}</span>
-                  <div className="fb-score__bar">
-                    <i style={{ width: `${(scores[k] ?? 0) * 10}%` }} />
+          <div className={styles.card}>
+            <p className={styles.cardTitle}>各ステップ</p>
+            {scoreLabels.map(([k, l]) => {
+              const s = scores[k] ?? 0;
+              return (
+                <div key={k} className={styles.stepRow}>
+                  <span className={styles.stepLabel}>{l}</span>
+                  <div className={styles.barTrack}>
+                    <div
+                      className={styles.barFill}
+                      style={{ width: `${s * 10}%`, background: barColor(s) }}
+                    />
                   </div>
-                  <span className="fb-score__num">{scores[k] ?? '-'}</span>
+                  <span className={styles.stepScore}>{scores[k] ?? '-'}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Good */}
+        {fb?.good && (
+          <div className={styles.card}>
+            <p className={styles.cardTitle}>✅ Good</p>
+            <p className={`${styles.cardText} ${styles.goodText}`}>{fb.good}</p>
+          </div>
+        )}
+
+        {/* 改善ポイント */}
+        {fb?.improvements?.length > 0 && (
+          <div className={styles.card}>
+            <p className={styles.cardTitle}>💡 改善ポイント</p>
+            <ol className={styles.improvementList}>
+              {fb.improvements.map((s, i) => (
+                <li key={i} className={styles.improvementItem}>
+                  <span className={styles.improvementNum}>{i + 1}</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {/* 各チェック項目 */}
+        {checks.length > 0 && (
+          <div className={styles.card}>
+            <p className={styles.cardTitle}>詳細チェック</p>
+            <div className={styles.checkList}>
+              {checks.map(([label, text]) => (
+                <div key={label} className={styles.checkItem}>
+                  <span className={styles.checkLabel}>{label}</span>
+                  <p className={styles.checkText}>{text}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Good */}
-        {fb?.good && (
-          <div className="window fb-block fb-good">
-            <p className="window__title">✅ Good</p>
-            <p style={{ margin: 0 }}>{fb.good}</p>
-          </div>
-        )}
-
-        {/* 各チェック項目 */}
-        {checks.map(([label, text]) => (
-          <div key={label} className="window fb-block">
-            <p className="window__title">{label}</p>
-            <p style={{ margin: 0 }}>{text}</p>
-          </div>
-        ))}
-
-        {/* 改善ポイント */}
-        {fb?.improvements?.length > 0 && (
-          <div className="window fb-block">
-            <p className="window__title">💡 改善ポイント</p>
-            <ol className="fb-improve">
-              {fb.improvements.map((s, i) => <li key={i}>{s}</li>)}
-            </ol>
-          </div>
-        )}
-
         {/* コメント */}
         {fb?.comment && (
-          <div className="window">
-            <p className="fb-comment">🔥 {fb.comment}</p>
+          <div className={styles.card}>
+            <p className={styles.cardTitle}>🔥 コメント</p>
+            <p className={styles.commentText}>{fb.comment}</p>
           </div>
         )}
 
-        <footer className="app-footer">HAVE FUN TRAINING</footer>
+        <footer className={styles.footer}>HAVE FUN TRAINING</footer>
       </div>
-    </>
+    </div>
   );
 }
