@@ -158,8 +158,9 @@ function parseSevenSteps(text) {
   return result;
 }
 
-// ── 採点を実行してpushで結果を送る共通処理（採点+スプレッドシート記録）──
-async function runGrade(userId, moduleId, steps) {
+// ── 採点を実行して結果を送る共通処理（採点+スプレッドシート記録）──
+// replyToken があればまず reply で試み、失敗時のみ push にフォールバック
+async function runGrade(userId, replyToken, moduleId, steps) {
   try {
     const fb = await gradeOutput(steps);
     const modName = MODULES[moduleId]?.manual?.title || '';
@@ -196,11 +197,18 @@ async function runGrade(userId, moduleId, steps) {
     }
 
     const gradeText = `📋【${modName}】採点結果\n${formatGradeResultShort(fb, resultUrl)}`;
-    const msgs = chunkMessages(gradeText, [
+    const quickReplies = [
       { label: 'もう1回採点', text: '#採点' },
       { label: 'お手本を見る', data: `model:${moduleId}`, displayText: '#お手本' },
-    ]);
-    await pushMessages(userId, msgs);
+    ];
+    const msgs = chunkMessages(gradeText, quickReplies);
+
+    // reply を試みて、失敗したら push にフォールバック
+    let sent = false;
+    if (replyToken) {
+      try { await replyMessages(replyToken, msgs); sent = true; } catch {}
+    }
+    if (!sent) await pushMessages(userId, msgs);
   } catch (e) {
     console.error('[runGrade] error:', e);
     await sendError(userId, `採点でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`);
@@ -544,8 +552,7 @@ async function handleText(ev, userId) {
             '（もう一度 #採点 から始めることもできます）');
           return;
         }
-        await replyProcessing(ev.replyToken, '⏳ AIが採点中です。少々お待ちください...');
-        await runGrade(userId, session.moduleId, steps);
+        await runGrade(userId, ev.replyToken, session.moduleId, steps);
         return;
       }
 
@@ -630,8 +637,7 @@ async function handleText(ev, userId) {
         '（もう一度 #採点 から始めることもできます）');
       return;
     }
-    await replyProcessing(ev.replyToken, '⏳ AIが採点中です。少々お待ちください...');
-    await runGrade(userId, detectedModuleId, steps);
+    await runGrade(userId, ev.replyToken, detectedModuleId, steps);
     return;
   }
 
