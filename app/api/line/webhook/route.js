@@ -274,6 +274,7 @@ function formatGradeResult(fb) {
     `🔍 T-UPチェック:\n${fb.tupCheck || '-'}\n\n` +
     `🔍 APのT-UPチェック:\n${fb.apTupCheck || '-'}\n\n` +
     `🔍 APチェック:\n${fb.apCheck || '-'}\n\n` +
+    `🔗 内容↔AP一貫性:\n${fb.consistencyCheck || '-'}\n\n` +
     `⚡ インパルスファクターチェック:\n${fb.impulseFactorCheck || '-'}\n\n` +
     `🛠 アプローチ話法チェック:\n${fb.approachTechniquesCheck || '-'}\n\n` +
     `🪜 5ステップスチェック:\n${fb.stepsCheck || '-'}\n\n` +
