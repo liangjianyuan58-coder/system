@@ -20,7 +20,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   const [streak, setStreak] = useState(0);
   const [doneToday, setDoneToday] = useState(false);
   const [sending, setSending] = useState(false);
-  const [note, setNote] = useState('※ 7項目すべて埋めないと記録できません');
+  const [note, setNote] = useState('');
   const [fx, setFx] = useState({ show: false, gained: 0, levelUp: false });
   const [barAnim, setBarAnim] = useState(false);
   const [fb, setFb] = useState(null);
@@ -46,7 +46,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
 
   useEffect(() => {
     setValues(EMPTY_STATE);
-    setFb(null); setFbError(''); setNote('※ 7項目すべて埋めないと記録できません');
+    setFb(null); setFbError(''); setNote('');
   }, [moduleId]);
 
   const filled = stepKeys.filter((k) => values[k].trim().length > 0).length;
@@ -140,7 +140,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         </div>
         <div className="exp-meta">
           <span className="exp-total">累計 {stats.exp} EXP</span>
-          <span className={'streak' + (streak > 0 ? ' on' : '')}>🔥 連続 {streak}日{doneToday ? '（今日済）' : ''}</span>
+          <span className={'streak' + (streak > 0 ? ' active' : '')}>🔥 連続 {streak}日{doneToday ? '（今日済）' : ''}</span>
         </div>
       </section>
 
@@ -158,7 +158,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
       {/* お手本スクリプト生成 */}
       <section className="window model-window">
         <div className="window__title">＊ お手本スクリプトを見る</div>
-        <p className="flow-lead">迷ったらまず型を。テーマを入れて生成すると、下の7欄に模範例が入ります。</p>
+        <p className="flow-lead">迷ったらまず型を。テーマを入れて生成すると、下の{stepKeys.length}欄に模範例が入ります。</p>
         <input className="koji-custom" type="text" placeholder="テーマ（任意）例：クレーム対応 / 飛び込み営業" value={theme} onChange={(e) => setTheme(e.target.value)} />
         <button type="button" className="btn btn--sub model-btn" onClick={genModel} disabled={modelLoading}>
           {modelLoading ? '生成中...' : '✨ お手本を生成して流し込む'}
@@ -188,7 +188,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         <button type="button" className={'btn' + (ready ? ' ready' : '')} disabled={!ready} onClick={onSubmit}>
           {sending ? '査定中...' : '▶ 記録してプロマネージャーに査定してもらう'}
         </button>
-        <div className="submit-note">{allFilled && !sending ? '※ 記録＋AI査定が走ります' : note}</div>
+        <div className="submit-note">{allFilled && !sending ? '※ 記録＋AI査定が走ります' : (note || `※ ${stepKeys.length}項目すべて埋めないと記録できません`)}</div>
       </div>
 
       {(fbLoading || fb || fbError) && (
@@ -196,7 +196,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
           <div className="window__title">＊ プロマネージャー査定</div>
           {fbLoading && <div className="fb-loading">▼ 査定中… 基準は厳しめにいくぞ</div>}
           {fbError && <div className="fb-error">{fbError}</div>}
-          {fb && <OutputFeedback fb={fb} />}
+          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} />}
         </section>
       )}
 
@@ -213,17 +213,17 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   );
 }
 
-function OutputFeedback({ fb }) {
+function OutputFeedback({ fb, stepLabels }) {
   const pass = fb.verdict === '合格';
   return (
     <div className="fb">
       <div className={'fb-verdict ' + (pass ? 'pass' : 'fail')}>
-        {pass ? '✓ 合格' : '✗ 要書き直し'}　<span className="fb-total">{fb.total} / 70 点</span>
+        {pass ? '✓ 合格' : '✗ 要書き直し'}　<span className="fb-total">{fb.total} / 80 点</span>
       </div>
       <div className="fb-scores">
         {Object.entries(fb.scores || {}).map(([k, v]) => (
           <div className="fb-score" key={k}>
-            <span className="fb-score__label">{STEP_LABELS[k] || k}</span>
+            <span className="fb-score__label">{(stepLabels && stepLabels[k]) || k}</span>
             <span className="fb-score__bar"><i style={{ width: (Number(v) / 10) * 100 + '%' }} /></span>
             <span className="fb-score__num">{v}</span>
           </div>

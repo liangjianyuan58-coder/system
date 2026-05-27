@@ -31,9 +31,10 @@ export async function POST(request) {
     const u = await appendOutput({
       userId: String(data.userId).trim(),
       name: String(data.name).trim(),
+      moduleId: data.moduleId || '',
       tup: data.tup, conclusion: data.conclusion, content: data.content,
       example: data.example, workExample: data.workExample,
-      reconclusion: data.reconclusion, ap: data.ap,
+      reconclusion: data.reconclusion, apTup: data.apTup || '', ap: data.ap,
     });
     const after = calcStats(u.count * EXP_PER_OUTPUT);
 

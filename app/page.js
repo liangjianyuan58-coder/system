@@ -93,7 +93,7 @@ export default function Page() {
 
         {/* タブ */}
         <nav className="tabs" role="tablist">
-          <button className={'tab' + (mode === 'output' ? ' active' : '')} onClick={() => setMode('output')}>① 7ステップ</button>
+          <button className={'tab' + (mode === 'output' ? ' active' : '')} onClick={() => setMode('output')}>① 8ステップ</button>
           <button className={'tab' + (mode === 'reframe' ? ' active' : '')} onClick={() => setMode('reframe')}>② リフレ</button>
           <button className={'tab' + (mode === 'kojitsuke' ? ' active' : '')} onClick={() => setMode('kojitsuke')}>③ こじつけ</button>
           <button className={'tab' + (mode === 'history' ? ' active' : '')} onClick={() => setMode('history')}>📋 履歴</button>
