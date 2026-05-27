@@ -283,7 +283,7 @@ function formatGradeResult(fb) {
 
 // ── お手本結果フォーマット ──
 function formatModelScript(script) {
-  const labels = { tup: '1.T-UP', conclusion: '2.結論', content: '3.内容', example: '4.一般的な例', workExample: '5.稼働における例', reconclusion: '6.再結論', ap: '7.AP' };
+  const labels = { tup: '1.T-UP', conclusion: '2.結論', content: '3.内容', example: '4.一般的な例', workExample: '5.稼働における例', reconclusion: '6.再結論', apTup: '7.APのT-UP', ap: '8.AP' };
   return Object.entries(labels)
     .map(([k, l]) => `【${l}】\n${script[k] || '-'}`)
     .join('\n\n');
