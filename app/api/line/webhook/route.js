@@ -275,8 +275,8 @@ function formatGradeResult(fb) {
     `🔍 APのT-UPチェック:\n${fb.apTupCheck || '-'}\n\n` +
     `🔍 APチェック:\n${fb.apCheck || '-'}\n\n` +
     `⚡ インパルスファクターチェック:\n${fb.impulseFactorCheck || '-'}\n\n` +
+    `🛠 アプローチ話法チェック:\n${fb.approachTechniquesCheck || '-'}\n\n` +
     `🪜 5ステップスチェック:\n${fb.stepsCheck || '-'}\n\n` +
-    `🎯 クロージングテクニックチェック:\n${fb.closingTechniquesCheck || '-'}\n\n` +
     `💡 改善ポイント:\n${(fb.improvements || []).map((s, i) => `${i + 1}. ${s}`).join('\n') || '-'}\n\n` +
     `🔥 コメント:\n${fb.comment || '-'}`;
 }
