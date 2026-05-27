@@ -85,30 +85,37 @@ function modulesInCategory(commandPrefix, categoryLabel) {
 function gradeTemplate(moduleId) {
   const mod = MODULES[moduleId];
   const name = mod.manual.title;
-  return `【${name}】7ステップを以下のフォーマットで送ってください：\n\n` +
+  return `【${name}】8ステップを以下のフォーマットで送ってください：\n\n` +
     `1.T-UP:\n（ここに入力）\n\n` +
     `2.結論:\n（ここに入力）\n\n` +
     `3.内容:\n（ここに入力）\n\n` +
     `4.一般的な例:\n（ここに入力）\n\n` +
     `5.稼働における例:\n（ここに入力）\n\n` +
     `6.再結論:\n（ここに入力）\n\n` +
-    `7.AP:\n（ここに入力）\n\n` +
+    `7.APのT-UP:\n（ここに入力）\n\n` +
+    `8.AP:\n（ここに入力）\n\n` +
     `※上記をコピーして各項目を埋めて送信！`;
 }
 
 // ── 7ステップのテキストをパース ──
 function parseSevenSteps(text) {
-  const keys = ['tup', 'conclusion', 'content', 'example', 'workExample', 'reconclusion', 'ap'];
+  const keys = ['tup', 'conclusion', 'content', 'example', 'workExample', 'reconclusion', 'apTup', 'ap'];
   const result = {};
 
-  // 番号付き行でスプリット: "1." "2." ... "7."（全角・半角・スペースあり対応）
-  const parts = text.split(/(?:^|\n)\s*[１-７1-7]\s*[.．:：\s]/);
+  // 番号付き行でスプリット: "1." ... "8."（全角・半角・スペースあり対応）
+  const parts = text.split(/(?:^|\n)\s*[１-８1-8]\s*[.．:：\s]/);
 
-  if (parts.length >= 8) {
-    // parts[0] はヘッダー、parts[1]〜parts[7] が各ステップ
-    for (let i = 0; i < 7; i++) {
-      // ラベル部分（"T-UP:" など）を除去して内容だけ取り出す
+  if (parts.length >= 9) {
+    // 8ステップ: parts[0] はヘッダー、parts[1]〜parts[8] が各ステップ
+    for (let i = 0; i < 8; i++) {
       result[keys[i]] = (parts[i + 1] || '').replace(/^[^\n]*[\n]/, '').trim()
+        || (parts[i + 1] || '').replace(/^[^:：]*[：:]?\s*/, '').trim();
+    }
+  } else if (parts.length >= 8) {
+    // 7ステップ（旧フォーマット互換）: apTup は空、ap を7番目に割り当て
+    const oldKeys = ['tup', 'conclusion', 'content', 'example', 'workExample', 'reconclusion', 'ap'];
+    for (let i = 0; i < 7; i++) {
+      result[oldKeys[i]] = (parts[i + 1] || '').replace(/^[^\n]*[\n]/, '').trim()
         || (parts[i + 1] || '').replace(/^[^:：]*[：:]?\s*/, '').trim();
     }
   } else {
@@ -120,10 +127,10 @@ function parseSevenSteps(text) {
       { key: 'example', patterns: [/(?:^|\n)\s*4\s*[.．:：]?\s*一般[^:：\n]*[：:]?\s*/i] },
       { key: 'workExample', patterns: [/(?:^|\n)\s*5\s*[.．:：]?\s*稼働[^:：\n]*[：:]?\s*/i] },
       { key: 'reconclusion', patterns: [/(?:^|\n)\s*6\s*[.．:：]?\s*再結論[^:：\n]*[：:]?\s*/i] },
-      { key: 'ap', patterns: [/(?:^|\n)\s*7\s*[.．:：]?\s*AP[^:：\n]*[：:]?\s*/i] },
+      { key: 'apTup', patterns: [/(?:^|\n)\s*7\s*[.．:：]?\s*AP[のノ]T[-\s]?UP[^:：\n]*[：:]?\s*/i] },
+      { key: 'ap', patterns: [/(?:^|\n)\s*8\s*[.．:：]?\s*AP[^のノT:：\n]*[：:]?\s*/i, /(?:^|\n)\s*7\s*[.．:：]?\s*AP[^のノT:：\n]*[：:]?\s*/i] },
     ];
 
-    // 各ステップの開始位置を特定
     const positions = stepMarkers.map(({ key, patterns }) => {
       for (const pat of patterns) {
         const m = text.match(pat);
@@ -138,14 +145,12 @@ function parseSevenSteps(text) {
       result[positions[i].key] = text.slice(start, end).trim();
     }
 
-    // 最後のAPが取れない場合のフォールバック
     if (!result.ap) {
-      const apMatch = text.match(/(?:7\s*[.．]?\s*)?AP[：:][^\n]*\n?([\s\S]*?)$/i);
+      const apMatch = text.match(/(?:[78]\s*[.．]?\s*)?AP[：:][^\n]*\n?([\s\S]*?)$/i);
       if (apMatch) result.ap = apMatch[1].trim();
     }
   }
 
-  // 空文字のフィールドは確実に空文字に
   for (const k of keys) {
     if (!result[k]) result[k] = '';
   }
@@ -174,6 +179,7 @@ async function runGrade(userId, moduleId, steps) {
         example: steps.example || '',
         workExample: steps.workExample || '',
         reconclusion: steps.reconclusion || '',
+        apTup: steps.apTup || '',
         ap: steps.ap || '',
         module: MODULES[moduleId]?.manual?.title || '',
         total: fb.total != null ? `${fb.total}/70` : '',
@@ -257,15 +263,16 @@ async function runReframe(userId, situation, reframe, quickReplyItems) {
 // ── 採点結果フォーマット ──
 function formatGradeResult(fb) {
   const scores = fb.scores || {};
-  const labels = { tup: 'T-UP', conclusion: '結論', content: '内容', example: '一般例', workExample: '稼働例', reconclusion: '再結論', ap: 'AP' };
+  const labels = { tup: 'T-UP', conclusion: '結論', content: '内容', example: '一般例', workExample: '稼働例', reconclusion: '再結論', apTup: 'APのT-UP', ap: 'AP' };
   const scoreLines = Object.entries(labels).map(([k, l]) => `${l}: ${scores[k] ?? '-'}/10`).join('\n');
 
   return `━━━━━━━━━━━━━━━\n` +
-    `🎯 合計: ${fb.total || 0}/70  ${fb.verdict || ''}\n` +
+    `🎯 合計: ${fb.total || 0}/80  ${fb.verdict || ''}\n` +
     `━━━━━━━━━━━━━━━\n\n` +
     `📊 各ステップ:\n${scoreLines}\n\n` +
     `✅ Good:\n${fb.good || '-'}\n\n` +
     `🔍 T-UPチェック:\n${fb.tupCheck || '-'}\n\n` +
+    `🔍 APのT-UPチェック:\n${fb.apTupCheck || '-'}\n\n` +
     `🔍 APチェック:\n${fb.apCheck || '-'}\n\n` +
     `💡 改善ポイント:\n${(fb.improvements || []).map((s, i) => `${i + 1}. ${s}`).join('\n') || '-'}\n\n` +
     `🔥 コメント:\n${fb.comment || '-'}`;
@@ -591,7 +598,7 @@ async function handleText(ev, userId) {
 
   // ---- セッションなし・コマンドなし ----
   // 7ステップ形式の入力は採点+記録（ヘッダーからモジュール特定、なければデフォルト）
-  const looksLikeSteps = /[1１][.．]/.test(text) && /[7７][.．]/.test(text);
+  const looksLikeSteps = /[1１][.．]/.test(text) && (/[8８][.．]/.test(text) || /[7７][.．]/.test(text));
   if (looksLikeSteps) {
     // ヘッダー【モジュール名】があれば特定、なければ ACTIVE_MODULE をデフォルトに
     const detectedModuleId = detectModuleId(text) || ACTIVE_MODULE;
