@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation';
 import styles from './result.module.css';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 function barColor(score) {
   if (score >= 9) return '#22c55e';

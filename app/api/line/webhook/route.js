@@ -165,11 +165,12 @@ async function runGrade(userId, replyToken, moduleId, steps) {
     const fb = await gradeOutput(steps);
     const modName = MODULES[moduleId]?.manual?.title || '';
 
-    // 結果IDを事前生成してURLを確定（スプレッドシートにも同じURLを保存）
+    // 結果IDを事前生成してスプレッドシートに保存（成功時のみURLをLINEに含める）
     const appUrl = process.env.NEXT_PUBLIC_APP_URL
       || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
     const resultId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-    const resultUrl = appUrl ? `${appUrl}/result/${resultId}` : null;
+    const candidateUrl = appUrl ? `${appUrl}/result/${resultId}` : null;
+    let resultUrl = null; // 保存成功後にのみ確定
 
     try {
       const profile = await getUserProfile(userId);
@@ -193,10 +194,12 @@ async function runGrade(userId, replyToken, moduleId, steps) {
         improvements: Array.isArray(fb.improvements) ? fb.improvements.join(' / ') : (fb.improvements || ''),
         comment: fb.comment || '',
         rawJson: JSON.stringify(fb),
-        resultUrl: resultUrl || '',
+        resultUrl: candidateUrl || '',
       });
+      resultUrl = candidateUrl; // 保存成功 → URLを確定
     } catch (saveErr) {
-      console.error('[runGrade] save error:', saveErr);
+      console.error('[runGrade] save error (URLなしで送信):', saveErr?.message || saveErr);
+      // resultUrl は null のまま → LINEメッセージからURLを省略
     }
 
     const gradeText = `📋【${modName}】採点結果\n${formatGradeResultShort(fb, resultUrl)}`;
