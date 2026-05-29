@@ -244,3 +244,22 @@ body {
 .hist-step { font-size: 12.5px; margin-bottom: 7px; }
 .hist-step b { display: block; color: var(--accent); margin-bottom: 2px; }
 .hist-more { width: 100%; margin-top: 8px; background: none; border: 1px solid rgba(255,255,255,.3); border-radius: 4px; color: var(--dim); font-family: inherit; font-size: 11px; padding: 6px; cursor: pointer; }
+.hist-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+.hist-module { font-size: 11px; color: var(--accent); border: 1px solid rgba(255,225,77,.5); border-radius: 3px; padding: 1px 6px; }
+.hist-score { font-size: 11px; font-weight: bold; border-radius: 3px; padding: 1px 6px; }
+.hist-score.pass { color: var(--green); border: 1px solid rgba(60,255,142,.5); }
+.hist-score.fail { color: #ffb454; border: 1px solid rgba(255,180,84,.5); }
+.hist-grade { margin-top: 12px; border: 1px solid rgba(255,225,77,.3); border-radius: 5px; padding: 10px; background: rgba(255,225,77,.03); }
+.hist-grade__header { font-size: 12px; color: var(--accent); font-weight: bold; margin-bottom: 8px; }
+.hist-grade__scores { margin-bottom: 8px; }
+.hist-grade__score { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11px; }
+.hist-grade__score-label { width: 4em; flex-shrink: 0; color: var(--dim); }
+.hist-grade__score-bar { flex: 1; height: 10px; background: var(--bar-bg); border: 1px solid rgba(255,255,255,.3); border-radius: 2px; overflow: hidden; }
+.hist-grade__score-bar i { display: block; height: 100%; background: var(--green); }
+.hist-grade__score-num { width: 1.2em; text-align: right; color: var(--fg); }
+.hist-grade__block { font-size: 12px; margin-top: 7px; }
+.hist-grade__block b { display: block; color: var(--accent); margin-bottom: 3px; }
+.hist-grade__good b { color: var(--green); }
+.hist-grade__comment { border-top: 1px dotted rgba(255,255,255,.2); padding-top: 7px; }
+.hist-grade__list { margin: 0; padding-left: 1.3em; }
+.hist-grade__list li { margin-bottom: 3px; }

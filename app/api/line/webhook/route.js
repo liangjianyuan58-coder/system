@@ -396,6 +396,7 @@ async function handleText(ev, userId) {
               await appendOutput({
                 userId: userId || '',
                 name: profile.displayName || userId || '(名無し)',
+                module: modName,
                 tup: steps.tup,
                 conclusion: steps.conclusion,
                 content: steps.content,
@@ -403,6 +404,7 @@ async function handleText(ev, userId) {
                 workExample: steps.workExample,
                 reconclusion: steps.reconclusion,
                 ap: steps.ap,
+                grade: JSON.stringify(fb),
               });
             } catch (_) {}
           })();
