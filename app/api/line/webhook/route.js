@@ -159,66 +159,75 @@ function parseSevenSteps(text) {
 }
 
 // ── 採点を実行して結果を送る共通処理（採点+スプレッドシート記録）──
-// replyToken があればまず reply で試み、失敗時のみ push にフォールバック
+// AI採点の成否に関わらず入力内容を必ずスプレッドシートに記録する
 async function runGrade(userId, replyToken, moduleId, steps) {
+  const modName = MODULES[moduleId]?.manual?.title || '';
+
+  // 1. AI採点（失敗しても記録は続行）
+  let fb = null;
+  let aiError = null;
   try {
-    const fb = await gradeOutput(steps);
-    const modName = MODULES[moduleId]?.manual?.title || '';
-
-    // 結果IDを事前生成してスプレッドシートに保存（成功時のみURLをLINEに含める）
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
-    const resultId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-    const candidateUrl = appUrl ? `${appUrl}/result/${resultId}` : null;
-    let resultUrl = null; // 保存成功後にのみ確定
-
-    try {
-      const profile = await getUserProfile(userId);
-      const displayName = profile?.displayName || '(名無し)';
-      await appendOutput({
-        id: resultId,
-        userId,
-        name: displayName,
-        tup: steps.tup || '',
-        conclusion: steps.conclusion || '',
-        content: steps.content || '',
-        example: steps.example || '',
-        workExample: steps.workExample || '',
-        reconclusion: steps.reconclusion || '',
-        apTup: steps.apTup || '',
-        ap: steps.ap || '',
-        module: MODULES[moduleId]?.manual?.title || '',
-        total: fb.total != null ? `${fb.total}/80` : '',
-        verdict: fb.verdict || '',
-        good: fb.good || '',
-        improvements: Array.isArray(fb.improvements) ? fb.improvements.join(' / ') : (fb.improvements || ''),
-        comment: fb.comment || '',
-        rawJson: JSON.stringify(fb),
-        resultUrl: candidateUrl || '',
-      });
-      resultUrl = candidateUrl; // 保存成功 → URLを確定
-    } catch (saveErr) {
-      console.error('[runGrade] save error (URLなしで送信):', saveErr?.message || saveErr);
-      // resultUrl は null のまま → LINEメッセージからURLを省略
-    }
-
-    const gradeText = `📋【${modName}】採点結果\n${formatGradeResultShort(fb, resultUrl)}`;
-    const quickReplies = [
-      { label: 'もう1回採点', text: '#採点' },
-      { label: 'お手本を見る', data: `model:${moduleId}`, displayText: '#お手本' },
-    ];
-    const msgs = chunkMessages(gradeText, quickReplies);
-
-    // reply を試みて、失敗したら push にフォールバック
-    let sent = false;
-    if (replyToken) {
-      try { await replyMessages(replyToken, msgs); sent = true; } catch {}
-    }
-    if (!sent) await pushMessages(userId, msgs);
+    fb = await gradeOutput(steps);
   } catch (e) {
-    console.error('[runGrade] error:', e);
-    await sendError(userId, `採点でエラーが発生しました。もう一度お試しください。\n（${e.message || 'AIエラー'}）`);
+    console.error('[runGrade] AI grading error:', e);
+    aiError = e;
   }
+
+  // 2. スプレッドシートへ記録（AI成功・失敗に関わらず）
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+  const resultId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+  const candidateUrl = appUrl ? `${appUrl}/result/${resultId}` : null;
+  let resultUrl = null;
+
+  try {
+    const profile = await getUserProfile(userId);
+    const displayName = profile?.displayName || '(名無し)';
+    await appendOutput({
+      id: resultId,
+      userId,
+      name: displayName,
+      tup: steps.tup || '',
+      conclusion: steps.conclusion || '',
+      content: steps.content || '',
+      example: steps.example || '',
+      workExample: steps.workExample || '',
+      reconclusion: steps.reconclusion || '',
+      apTup: steps.apTup || '',
+      ap: steps.ap || '',
+      module: MODULES[moduleId]?.manual?.title || '',
+      total: fb?.total != null ? `${fb.total}/80` : '',
+      verdict: fb?.verdict || '',
+      good: fb?.good || '',
+      improvements: Array.isArray(fb?.improvements) ? fb.improvements.join(' / ') : (fb?.improvements || ''),
+      comment: fb?.comment || '',
+      rawJson: fb ? JSON.stringify(fb) : '',
+      resultUrl: candidateUrl || '',
+    });
+    resultUrl = candidateUrl;
+  } catch (saveErr) {
+    console.error('[runGrade] save error:', saveErr?.message || saveErr);
+  }
+
+  // 3. AI失敗の場合：入力は記録済みである旨を通知して終了
+  if (aiError) {
+    await sendError(userId, `採点でエラーが発生しました（入力内容は記録しました）。もう一度お試しください。\n（${aiError.message || 'AIエラー'}）`);
+    return;
+  }
+
+  // 4. AI成功の場合：結果を送信
+  const gradeText = `📋【${modName}】採点結果\n${formatGradeResultShort(fb, resultUrl)}`;
+  const quickReplies = [
+    { label: 'もう1回採点', text: '#採点' },
+    { label: 'お手本を見る', data: `model:${moduleId}`, displayText: '#お手本' },
+  ];
+  const msgs = chunkMessages(gradeText, quickReplies);
+
+  let sent = false;
+  if (replyToken) {
+    try { await replyMessages(replyToken, msgs); sent = true; } catch {}
+  }
+  if (!sent) await pushMessages(userId, msgs);
 }
 
 // ── こじつけを実行してpushで結果を送る（+記録）──
