@@ -158,27 +158,17 @@ function parseSevenSteps(text) {
   return result;
 }
 
-// ── 採点を実行して結果を送る共通処理（採点+スプレッドシート記録）──
-// AI採点の成否に関わらず入力内容を必ずスプレッドシートに記録する
+// ── 採点を実行して結果を送る共通処理（入力保存＋URL送信のみ・採点は結果ページで実行）──
 async function runGrade(userId, replyToken, moduleId, steps) {
   const modName = MODULES[moduleId]?.manual?.title || '';
 
-  // 1. AI採点（失敗しても記録は続行）
-  let fb = null;
-  let aiError = null;
-  try {
-    fb = await gradeOutput(steps);
-  } catch (e) {
-    console.error('[runGrade] AI grading error:', e);
-    aiError = e;
-  }
+  // replyToken を即座に消費（30秒制限対策）
+  await replyProcessing(replyToken, `📝【${modName}】入力を受け付けました。結果ページを生成中...`);
 
-  // 2. スプレッドシートへ記録（AI成功・失敗に関わらず）
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
     || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
   const resultId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-  const candidateUrl = appUrl ? `${appUrl}/result/${resultId}` : null;
-  let resultUrl = null;
+  const resultUrl = appUrl ? `${appUrl}/result/${resultId}` : null;
 
   try {
     const profile = await getUserProfile(userId);
@@ -195,39 +185,20 @@ async function runGrade(userId, replyToken, moduleId, steps) {
       reconclusion: steps.reconclusion || '',
       apTup: steps.apTup || '',
       ap: steps.ap || '',
-      module: MODULES[moduleId]?.manual?.title || '',
-      total: fb?.total != null ? `${fb.total}/80` : '',
-      verdict: fb?.verdict || '',
-      good: fb?.good || '',
-      improvements: Array.isArray(fb?.improvements) ? fb.improvements.join(' / ') : (fb?.improvements || ''),
-      comment: fb?.comment || '',
-      rawJson: fb ? JSON.stringify(fb) : '',
-      resultUrl: candidateUrl || '',
+      module: modName,
+      resultUrl: resultUrl || '',
     });
-    resultUrl = candidateUrl;
   } catch (saveErr) {
     console.error('[runGrade] save error:', saveErr?.message || saveErr);
-  }
-
-  // 3. AI失敗の場合：入力は記録済みである旨を通知して終了
-  if (aiError) {
-    await sendError(userId, `採点でエラーが発生しました（入力内容は記録しました）。もう一度お試しください。\n（${aiError.message || 'AIエラー'}）`);
+    await pushText(userId, `⚠️ 入力の保存に失敗しました。もう一度お試しください。\n（${saveErr?.message || 'エラー'}）`);
     return;
   }
 
-  // 4. AI成功の場合：結果を送信
-  const gradeText = `📋【${modName}】採点結果\n${formatGradeResultShort(fb, resultUrl)}`;
-  const quickReplies = [
-    { label: 'もう1回採点', text: '#採点' },
-    { label: 'お手本を見る', data: `model:${moduleId}`, displayText: '#お手本' },
-  ];
-  const msgs = chunkMessages(gradeText, quickReplies);
-
-  let sent = false;
-  if (replyToken) {
-    try { await replyMessages(replyToken, msgs); sent = true; } catch {}
+  if (resultUrl) {
+    await pushText(userId, `✅【${modName}】登録完了！\n\n📊 採点結果はこちら：\n${resultUrl}\n\n※ ページを開くと採点が実行されます（10〜30秒かかります）`);
+  } else {
+    await pushText(userId, `✅【${modName}】登録完了！\n（結果URLを表示するには NEXT_PUBLIC_APP_URL を Vercel 環境変数に設定してください）`);
   }
-  if (!sent) await pushMessages(userId, msgs);
 }
 
 // ── こじつけを実行してpushで結果を送る（+記録）──

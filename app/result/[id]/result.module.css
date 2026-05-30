@@ -229,6 +229,17 @@
   padding-top: 1px;
 }
 
+/* ── 再試行リンク ── */
+.retryLink {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #ef4444;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* ── フッター ── */
 .footer {
   text-align: center;

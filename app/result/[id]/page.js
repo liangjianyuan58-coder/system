@@ -1,8 +1,11 @@
 // =============================================================
 // app/result/[id]/page.js
 // 採点結果詳細ページ（LINE から誘導）
+// rawJson が空の場合は AI 採点を実行してシートに書き戻す
 // =============================================================
-import { getOutputById } from '@/lib/sheet';
+import { getOutputById, updateOutputById } from '@/lib/sheet';
+import { gradeOutput } from '@/lib/gemini';
+import { MODULES, ACTIVE_MODULE } from '@/lib/havefun-data';
 import { notFound } from 'next/navigation';
 import styles from './result.module.css';
 
@@ -28,9 +31,45 @@ export default async function ResultPage({ params }) {
   if (!result) notFound();
 
   let fb = null;
-  try {
-    if (result.rawJson) fb = JSON.parse(result.rawJson);
-  } catch {}
+  let gradingError = null;
+
+  if (result.rawJson) {
+    try { fb = JSON.parse(result.rawJson); } catch {}
+  } else if (result.tup || result.conclusion) {
+    // rawJson なし → このページで採点を実行してシートに書き戻す
+    try {
+      const moduleId = Object.keys(MODULES).find(
+        (mid) => MODULES[mid].manual.title === result.module
+      ) || ACTIVE_MODULE;
+
+      fb = await gradeOutput({
+        moduleId,
+        tup: result.tup,
+        conclusion: result.conclusion,
+        content: result.content,
+        example: result.example,
+        workExample: result.workExample,
+        reconclusion: result.reconclusion,
+        apTup: result.apTup,
+        ap: result.ap,
+      });
+
+      // 採点結果をシートに書き戻す（失敗しても表示は続行）
+      updateOutputById(id, {
+        total: fb.total != null ? `${fb.total}/80` : '',
+        verdict: fb.verdict || '',
+        good: fb.good || '',
+        improvements: Array.isArray(fb.improvements)
+          ? fb.improvements.join(' / ')
+          : (fb.improvements || ''),
+        comment: fb.comment || '',
+        rawJson: JSON.stringify(fb),
+      }).catch((e) => console.error('[result page] updateOutputById error:', e?.message || e));
+    } catch (err) {
+      console.error('[result page] gradeOutput error:', err?.message || err);
+      gradingError = err?.message || 'AI採点でエラーが発生しました';
+    }
+  }
 
   const scores = fb?.scores || {};
   const scoreLabels = [
@@ -73,6 +112,15 @@ export default async function ResultPage({ params }) {
           )}
           {ts && <p className={styles.headerMeta}>{ts}</p>}
         </header>
+
+        {/* AI採点エラー時 */}
+        {gradingError && (
+          <div className={styles.card} style={{ borderLeft: '4px solid #ef4444' }}>
+            <p className={styles.cardTitle}>⚠️ 採点エラー</p>
+            <p className={styles.cardText}>{gradingError}</p>
+            <a href="" className={styles.retryLink}>↻ 再読み込みして再試行</a>
+          </div>
+        )}
 
         {/* 合計スコア・判定 */}
         <div className={styles.scoreCard}>
