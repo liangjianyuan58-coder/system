@@ -8,6 +8,7 @@ import { gradeOutput } from '@/lib/gemini';
 import { MODULES, ACTIVE_MODULE } from '@/lib/havefun-data';
 import { notFound } from 'next/navigation';
 import styles from './result.module.css';
+import GradingErrorCard from './GradingErrorCard';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -114,13 +115,7 @@ export default async function ResultPage({ params }) {
         </header>
 
         {/* AI採点エラー時 */}
-        {gradingError && (
-          <div className={styles.card} style={{ borderLeft: '4px solid #ef4444' }}>
-            <p className={styles.cardTitle}>⚠️ 採点エラー</p>
-            <p className={styles.cardText}>{gradingError}</p>
-            <a href="" className={styles.retryLink}>↻ 再読み込みして再試行</a>
-          </div>
-        )}
+        {gradingError && <GradingErrorCard errorMessage={gradingError} />}
 
         {/* 合計スコア・判定 */}
         <div className={styles.scoreCard}>

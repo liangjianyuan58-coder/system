@@ -229,15 +229,63 @@
   padding-top: 1px;
 }
 
-/* ── 再試行リンク ── */
-.retryLink {
-  display: inline-block;
-  margin-top: 10px;
+/* ── エラーカード ── */
+.errorCard {
+  background: #fff7f7;
+  border: 1.5px solid #fca5a5;
+  border-radius: 16px;
+  padding: 18px 16px 16px;
+  margin-bottom: 14px;
+}
+
+.errorTitle {
+  font-size: 15px;
+  font-weight: 800;
+  color: #b91c1c;
+  margin: 0 0 14px;
+}
+
+.errorSection {
+  margin-bottom: 12px;
+}
+
+.errorSection:last-of-type {
+  margin-bottom: 16px;
+}
+
+.errorSectionLabel {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.errorSectionText {
   font-size: 13px;
-  color: #ef4444;
-  font-weight: 600;
-  text-decoration: underline;
+  line-height: 1.75;
+  color: #334155;
+  margin: 0;
+}
+
+.retryButton {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
   cursor: pointer;
+  text-align: center;
+}
+
+.retryButton:hover {
+  background: #dc2626;
 }
 
 /* ── フッター ── */
