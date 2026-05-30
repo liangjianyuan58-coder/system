@@ -9,6 +9,7 @@ import { MODULES, ACTIVE_MODULE } from '@/lib/havefun-data';
 import { notFound } from 'next/navigation';
 import styles from './result.module.css';
 import GradingErrorCard from './GradingErrorCard';
+import UnderstandingSection from './UnderstandingSection';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -198,6 +199,20 @@ export default async function ResultPage({ params }) {
             <p className={styles.commentText}>{fb.comment}</p>
           </div>
         )}
+
+        {/* 理解度を深める */}
+        {result.module && (() => {
+          const moduleId = Object.keys(MODULES).find(
+            (mid) => MODULES[mid].manual.title === result.module
+          ) || ACTIVE_MODULE;
+          return (
+            <UnderstandingSection
+              moduleId={moduleId}
+              userId={result.userId}
+              name={result.name}
+            />
+          );
+        })()}
 
         <footer className={styles.footer}>HAVE FUN TRAINING</footer>
       </div>

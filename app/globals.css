@@ -244,3 +244,30 @@ body {
 .hist-step { font-size: 12.5px; margin-bottom: 7px; }
 .hist-step b { display: block; color: var(--accent); margin-bottom: 2px; }
 .hist-more { width: 100%; margin-top: 8px; background: none; border: 1px solid rgba(255,255,255,.3); border-radius: 4px; color: var(--dim); font-family: inherit; font-size: 11px; padding: 6px; cursor: pointer; }
+
+/* ===== 理解チェック (UnderstandingChecker) ===== */
+.uc { }
+.uc--compact .uc-start, .uc--compact .uc-answering, .uc--compact .uc-result { }
+.uc-start { display: flex; flex-direction: column; gap: 10px; }
+.uc-lead { color: var(--dim); font-size: 13px; line-height: 1.6; margin: 0; }
+.uc-loading { color: var(--dim); font-size: 13px; padding: 12px 0; }
+.uc-answering { display: flex; flex-direction: column; gap: 12px; }
+.uc-question-block { background: rgba(255,255,255,.06); border-left: 3px solid var(--accent); border-radius: 0 5px 5px 0; padding: 10px 12px; }
+.uc-q-label { font-size: 11px; color: var(--accent); font-weight: bold; margin: 0 0 4px; letter-spacing: .06em; }
+.uc-q-text { font-size: 14px; color: var(--fg); line-height: 1.65; margin: 0; }
+.uc-hint { font-size: 12px; color: var(--dim); line-height: 1.6; margin: 0; }
+.uc-textarea { width: 100%; background: rgba(0,0,0,.5); color: var(--fg); border: 2px solid rgba(255,255,255,.3); border-radius: 5px; padding: 10px; font-family: inherit; font-size: 14px; resize: vertical; outline: none; box-sizing: border-box; }
+.uc-textarea:focus { border-color: var(--accent); }
+.uc-error { color: var(--red, #ff6b6b); font-size: 12px; margin: 0; }
+.uc-result { display: flex; flex-direction: column; gap: 12px; }
+.uc-score-row { display: flex; align-items: baseline; gap: 14px; padding: 10px 0 4px; }
+.uc-score { font-size: 52px; font-weight: 900; line-height: 1; }
+.uc-score-max { font-size: 18px; color: var(--dim); font-weight: 400; }
+.uc-verdict { font-size: 16px; font-weight: 700; }
+.uc-block { background: rgba(255,255,255,.05); border-radius: 5px; padding: 12px; }
+.uc-block--essence { border: 1px solid rgba(255,225,77,.3); }
+.uc-block-title { font-size: 11px; font-weight: 700; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; margin: 0 0 8px; }
+.uc-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.uc-list li { font-size: 13px; color: var(--fg); line-height: 1.65; }
+.uc-essence-text { font-size: 13px; color: var(--fg); line-height: 1.8; margin: 0; }
+.uc-comment-text { font-size: 13px; color: var(--accent); font-weight: 600; line-height: 1.7; margin: 0; }

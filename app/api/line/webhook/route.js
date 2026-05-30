@@ -6,7 +6,7 @@
 // =============================================================
 import { NextResponse } from 'next/server';
 import { verifySignature, replyText, replyMessages, pushText, pushMessages, textWithQuickReply, chunkMessages, getUserProfile } from '@/lib/line';
-import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript } from '@/lib/gemini';
+import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript, generateUnderstandingQuestion, evaluateUnderstanding } from '@/lib/gemini';
 import { MODULES, MODULE_CATEGORIES, ACTIVE_MODULE } from '@/lib/havefun-data';
 import { getSession, setSession, clearSession, cleanupSessions } from '@/lib/line-session';
 import { appendOutput, appendActivity } from '@/lib/sheet';
@@ -156,6 +156,27 @@ function parseSevenSteps(text) {
   }
 
   return result;
+}
+
+// ── 理解チェック 問題送信 ──
+async function runUnderstandingQuestion(userId, replyToken, moduleId) {
+  const modName = MODULES[moduleId]?.manual?.title || '';
+  try {
+    const q = await generateUnderstandingQuestion(moduleId);
+    setSession(userId, { action: 'understanding_answer', moduleId, question: q.mainQuestion, subQuestion: q.subQuestion });
+    const text =
+      `🧠【${modName}】理解チェック\n` +
+      `━━━━━━━━━━━━━━━\n\n` +
+      `❓ 問い1：\n${q.mainQuestion}\n\n` +
+      `❓ 問い2：\n${q.subQuestion}\n\n` +
+      `💡 ${q.hint}\n\n` +
+      `━━━━━━━━━━━━━━━\n` +
+      `2つの問いへの回答を１つのメッセージで送ってください。`;
+    await safeReply(replyToken, userId, text);
+  } catch (e) {
+    console.error('[runUnderstandingQuestion] error:', e);
+    await sendError(userId, `理解チェックの生成でエラーが発生しました。\n（${e.message || 'AIエラー'}）`);
+  }
 }
 
 // ── 採点を実行して結果を送る共通処理（入力保存＋URL送信のみ・採点は結果ページで実行）──
@@ -422,6 +443,12 @@ async function handlePostback(ev, userId) {
       break;
     }
 
+    case 'understanding': {
+      await replyProcessing(ev.replyToken, `⏳【${modName}】理解チェック問題を生成中です...`);
+      await runUnderstandingQuestion(userId, null, moduleId);
+      break;
+    }
+
     case 'reverse': {
       setSession(userId, { action: 'reverse', moduleId });
       await safeReply(ev.replyToken, userId,
@@ -450,6 +477,12 @@ async function handleText(ev, userId) {
 
   if (/^[#＃]お手本/.test(text)) {
     const msg = textWithQuickReply('📖 カテゴリを選んでください：', categoryQuickReplyItems('model'));
+    await safeReplyMessages(ev.replyToken, userId, [msg]);
+    return;
+  }
+
+  if (/^[#＃]理解チェック/.test(text)) {
+    const msg = textWithQuickReply('🧠 カテゴリを選んでください：', categoryQuickReplyItems('understanding'));
     await safeReplyMessages(ev.replyToken, userId, [msg]);
     return;
   }
@@ -513,8 +546,9 @@ async function handleText(ev, userId) {
   if (/^[#＃](ヘルプ|help)/i.test(text)) {
     await safeReply(ev.replyToken, userId,
       '📋 使えるコマンド一覧：\n\n' +
-      '#採点 → 7ステップの採点\n' +
+      '#採点 → 8ステップの採点\n' +
       '#お手本 → お手本スクリプト生成\n' +
+      '#理解チェック → 本質理解の深掘り\n' +
       '#こじつけ → こじつけ力トレーニング\n' +
       '#リフレーム → リフレーミング・ジム\n' +
       '#逆質問 → 理解度チェック\n\n' +
@@ -540,6 +574,51 @@ async function handleText(ev, userId) {
           return;
         }
         await runGrade(userId, ev.replyToken, session.moduleId, steps);
+        return;
+      }
+
+      case 'understanding_answer': {
+        clearSession(userId);
+        const { moduleId: uMid, question: uQ, subQuestion: uSQ } = session;
+        const modName2 = MODULES[uMid]?.manual?.title || '';
+        await replyProcessing(ev.replyToken, '⏳ 回答を評価中です...');
+        try {
+          const fb = await evaluateUnderstanding(uMid, uQ, uSQ, text);
+          try {
+            const profile = await getUserProfile(userId);
+            const displayName = profile?.displayName || '(名無し)';
+            await appendActivity({
+              userId, name: displayName,
+              type: '理解チェック',
+              module: modName2,
+              keyword: `${uQ}　/　${uSQ}`,
+              userInput: text,
+              total: `${fb.score}/10`,
+              good: (fb.understood || []).join(' / '),
+              improvements: (fb.missing || []).join(' / '),
+              comment: fb.comment || '',
+              aiExample: fb.trueEssence || '',
+            });
+          } catch (saveErr) {
+            console.error('[understanding_answer] save error:', saveErr);
+          }
+          const mark = fb.score >= 8 ? '✅' : fb.score >= 6 ? '🔶' : fb.score >= 4 ? '⚠️' : '❌';
+          const resultText =
+            `${mark}【${modName2}】理解チェック結果\n\n` +
+            `🎯 スコア: ${fb.score}/10　${fb.verdict}\n\n` +
+            `✅ 理解できている点:\n${(fb.understood || []).map((s, i) => `${i + 1}. ${s}`).join('\n') || '-'}\n\n` +
+            `💡 まだ抜けている本質:\n${(fb.missing || []).map((s, i) => `${i + 1}. ${s}`).join('\n') || '-'}\n\n` +
+            `📖 この概念の真の本質:\n${fb.trueEssence || '-'}\n\n` +
+            `🔥 コメント:\n${fb.comment || '-'}`;
+          const msgs = chunkMessages(resultText, [
+            { label: 'もう一度', data: `understanding:${uMid}`, displayText: '#理解チェック' },
+            { label: '#採点', text: '#採点' },
+          ]);
+          await pushMessages(userId, msgs);
+        } catch (e) {
+          console.error('[understanding_answer] error:', e);
+          await sendError(userId, `評価でエラーが発生しました。\n（${e.message || 'AIエラー'}）`);
+        }
         return;
       }
 
