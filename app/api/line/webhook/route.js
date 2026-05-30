@@ -162,9 +162,6 @@ function parseSevenSteps(text) {
 async function runGrade(userId, replyToken, moduleId, steps) {
   const modName = MODULES[moduleId]?.manual?.title || '';
 
-  // replyToken を即座に消費（30秒制限対策）
-  await replyProcessing(replyToken, `📝【${modName}】入力を受け付けました。結果ページを生成中...`);
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
     || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
   const resultId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
@@ -190,15 +187,19 @@ async function runGrade(userId, replyToken, moduleId, steps) {
     });
   } catch (saveErr) {
     console.error('[runGrade] save error:', saveErr?.message || saveErr);
-    await pushText(userId, `⚠️ 入力の保存に失敗しました。もう一度お試しください。\n（${saveErr?.message || 'エラー'}）`);
+    await safeReply(replyToken, userId, `⚠️ 入力の保存に失敗しました。もう一度お試しください。\n（${saveErr?.message || 'エラー'}）`);
     return;
   }
 
-  if (resultUrl) {
-    await pushText(userId, `✅【${modName}】登録完了！\n\n📊 採点結果はこちら：\n${resultUrl}\n\n※ ページを開くと採点が実行されます（10〜30秒かかります）`);
-  } else {
-    await pushText(userId, `✅【${modName}】登録完了！\n（結果URLを表示するには NEXT_PUBLIC_APP_URL を Vercel 環境変数に設定してください）`);
-  }
+  const text = resultUrl
+    ? `✅【${modName}】入力を受け付けました！\n\n📊 採点結果はこちら：\n${resultUrl}\n\n※ ページを開くと採点が実行されます（10〜30秒）`
+    : `✅【${modName}】入力を受け付けました！\n（結果URLを表示するには NEXT_PUBLIC_APP_URL を Vercel 環境変数に設定してください）`;
+
+  const msgs = chunkMessages(text, [
+    { label: 'もう1回採点', text: '#採点' },
+    { label: 'お手本を見る', data: `model:${moduleId}`, displayText: '#お手本' },
+  ]);
+  await safeReplyMessages(replyToken, userId, msgs);
 }
 
 // ── こじつけを実行してpushで結果を送る（+記録）──
