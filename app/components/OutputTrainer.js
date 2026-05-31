@@ -242,6 +242,34 @@ function OutputFeedback({ fb, stepLabels }) {
         <div className="fb-block"><b>△ 改善ポイント</b><ul className="fb-improve">{fb.improvements.map((t, i) => <li key={i}>{t}</li>)}</ul></div>
       )}
       {fb.comment && <p className="fb-comment">{fb.comment}</p>}
+
+      {fb.languageCheck && (
+        <div className="fb-block fb-lang">
+          <b>📝 言語チェック</b>
+          <div className="fb-lang-score">自然さ {fb.languageCheck.score}/10　{fb.languageCheck.verdict}</div>
+          {fb.languageCheck.patterns?.length > 0 && (
+            <div className="fb-lang-patterns">
+              {fb.languageCheck.patterns.map((p, i) => (
+                <span key={i} className={`fb-lang-tag fb-lang-tag--${p.level === '高' ? 'high' : p.level === '中' ? 'mid' : 'low'}`}>
+                  「{p.ending}」{p.count}回
+                </span>
+              ))}
+            </div>
+          )}
+          {fb.languageCheck.issues?.length > 0 && (
+            <ul className="fb-improve">{fb.languageCheck.issues.map((s, i) => <li key={i}>{s}</li>)}</ul>
+          )}
+          {fb.languageCheck.tips?.length > 0 && (
+            <p className="fb-lang-tips">💡 {fb.languageCheck.tips.join('　')}</p>
+          )}
+          {fb.languageCheck.improved && (
+            <details className="fb-lang-improved">
+              <summary>✏ 修正例を見る</summary>
+              <p>{fb.languageCheck.improved}</p>
+            </details>
+          )}
+        </div>
+      )}
     </div>
   );
 }

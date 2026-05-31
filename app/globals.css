@@ -271,3 +271,16 @@ body {
 .uc-list li { font-size: 13px; color: var(--fg); line-height: 1.65; }
 .uc-essence-text { font-size: 13px; color: var(--fg); line-height: 1.8; margin: 0; }
 .uc-comment-text { font-size: 13px; color: var(--accent); font-weight: 600; line-height: 1.7; margin: 0; }
+
+/* ===== 言語チェック（OutputFeedback内） ===== */
+.fb-lang { display: flex; flex-direction: column; gap: 8px; }
+.fb-lang-score { font-size: 14px; font-weight: 700; color: var(--accent); }
+.fb-lang-patterns { display: flex; flex-wrap: wrap; gap: 6px; }
+.fb-lang-tag { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+.fb-lang-tag--high { background: rgba(255,107,107,.2); color: #ff6b6b; }
+.fb-lang-tag--mid { background: rgba(255,159,67,.2); color: #ff9f43; }
+.fb-lang-tag--low { background: rgba(255,225,77,.2); color: #ffe14d; }
+.fb-lang-tips { font-size: 12px; color: var(--dim); line-height: 1.65; margin: 0; }
+.fb-lang-improved { }
+.fb-lang-improved summary { font-size: 12px; color: var(--dim); cursor: pointer; }
+.fb-lang-improved p { font-size: 12px; color: #3cff8e; margin-top: 6px; line-height: 1.75; white-space: pre-wrap; background: rgba(60,255,142,.07); border-radius: 4px; padding: 8px; }

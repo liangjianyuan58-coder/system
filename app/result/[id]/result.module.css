@@ -288,6 +288,13 @@
   background: #dc2626;
 }
 
+/* ── 言語チェック ── */
+.langScoreRow { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.langScore { font-size: 40px; font-weight: 900; line-height: 1; }
+.langScoreMax { font-size: 16px; color: #94a3b8; font-weight: 400; }
+.langPatterns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.langTag { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 5px; }
+
 /* ── 理解チェックセクション ── */
 .ucStartBtn {
   display: block;

@@ -200,6 +200,58 @@ export default async function ResultPage({ params }) {
           </div>
         )}
 
+        {/* 言語チェック */}
+        {fb?.languageCheck && (
+          <div className={styles.card}>
+            <p className={styles.cardTitle}>📝 言語チェック（台本の自然さ）</p>
+            <div className={styles.langScoreRow}>
+              <span className={styles.langScore}
+                style={{ color: fb.languageCheck.score >= 8 ? '#15803d' : fb.languageCheck.score >= 6 ? '#d97706' : '#dc2626' }}>
+                {fb.languageCheck.score}<span className={styles.langScoreMax}>/10</span>
+              </span>
+              <span style={{ fontSize: '14px', fontWeight: 700,
+                color: fb.languageCheck.score >= 8 ? '#15803d' : fb.languageCheck.score >= 6 ? '#d97706' : '#dc2626' }}>
+                {fb.languageCheck.verdict}
+              </span>
+            </div>
+            {fb.languageCheck.patterns?.length > 0 && (
+              <div className={styles.langPatterns}>
+                {fb.languageCheck.patterns.map((p, i) => (
+                  <span key={i} className={styles.langTag}
+                    style={{ background: p.level === '高' ? '#fef2f2' : p.level === '中' ? '#fff7ed' : '#fefce8',
+                             color: p.level === '高' ? '#dc2626' : p.level === '中' ? '#d97706' : '#ca8a04',
+                             border: `1px solid ${p.level === '高' ? '#fca5a5' : p.level === '中' ? '#fed7aa' : '#fde68a'}` }}>
+                    「{p.ending}」{p.count}回
+                  </span>
+                ))}
+              </div>
+            )}
+            {fb.languageCheck.issues?.length > 0 && (
+              <ul className={styles.improvementList} style={{ marginTop: '10px' }}>
+                {fb.languageCheck.issues.map((s, i) => (
+                  <li key={i} className={styles.improvementItem}>
+                    <span className={styles.improvementNum}>!</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {fb.languageCheck.tips?.length > 0 && (
+              <p className={styles.cardText} style={{ marginTop: '8px', color: '#64748b', fontSize: '12px' }}>
+                💡 {fb.languageCheck.tips.join('　')}
+              </p>
+            )}
+            {fb.languageCheck.improved && (
+              <details style={{ marginTop: '10px' }}>
+                <summary style={{ fontSize: '12px', color: '#94a3b8', cursor: 'pointer' }}>✏ 修正例を見る</summary>
+                <p className={styles.cardText} style={{ marginTop: '8px', background: '#f0fdf4', padding: '10px', borderRadius: '8px', color: '#15803d', whiteSpace: 'pre-wrap' }}>
+                  {fb.languageCheck.improved}
+                </p>
+              </details>
+            )}
+          </div>
+        )}
+
         {/* 理解度を深める */}
         {result.module && (() => {
           const moduleId = Object.keys(MODULES).find(
