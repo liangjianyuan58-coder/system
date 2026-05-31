@@ -314,18 +314,11 @@ async function runReframe(userId, situation, reframe, quickReplyItems) {
 function formatGradeResultShort(fb, resultUrl) {
   const improvements = (fb.improvements || []).slice(0, 2)
     .map((s, i) => `${i + 1}. ${s}`).join('\n');
-  const lang = fb.languageCheck;
-  const langLine = lang
-    ? `\n\n📝 言語チェック: ${lang.score}/10  ${lang.verdict}` +
-      (lang.patterns?.length > 0 ? '\n' + lang.patterns.map((p) => `「${p.ending}」${p.count}回`).join('  ') : '') +
-      (lang.issues?.length > 0 ? '\n' + lang.issues[0] : '')
-    : '';
   return `━━━━━━━━━━━━━━━\n` +
     `🎯 合計: ${fb.total || 0}/80  ${fb.verdict || ''}\n` +
     `━━━━━━━━━━━━━━━\n\n` +
     `✅ Good:\n${fb.good || '-'}\n\n` +
     `💡 改善ポイント:\n${improvements || '-'}` +
-    langLine +
     (resultUrl ? `\n\n📱 詳細を見る:\n${resultUrl}` : '');
 }
 
