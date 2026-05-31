@@ -6,7 +6,7 @@
 // =============================================================
 import { NextResponse } from 'next/server';
 import { verifySignature, replyText, replyMessages, pushText, pushMessages, textWithQuickReply, chunkMessages, getUserProfile } from '@/lib/line';
-import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript, generateUnderstandingQuestion, evaluateUnderstanding } from '@/lib/gemini';
+import { gradeOutput, kojitsukeFeedback, reframeFeedback, modelScript, generateUnderstandingQuestion, evaluateUnderstanding, checkScriptNaturalness } from '@/lib/gemini';
 import { MODULES, MODULE_CATEGORIES, ACTIVE_MODULE } from '@/lib/havefun-data';
 import { getSession, setSession, clearSession, cleanupSessions } from '@/lib/line-session';
 import { appendOutput, appendActivity } from '@/lib/sheet';
@@ -156,6 +156,38 @@ function parseSevenSteps(text) {
   }
 
   return result;
+}
+
+// ── 言語チェック ──
+async function runLanguageCheck(userId, script) {
+  try {
+    const fb = await checkScriptNaturalness(script);
+    const patterns = (fb.patterns || [])
+      .map((p) => `【${p.level}】「${p.ending}」${p.count}回`)
+      .join('\n');
+    const sectionLines = (fb.sections || []).map((sec) => {
+      const issues = (sec.issues || []).map((s) => `  ⚠ ${s}`).join('\n');
+      return `▼ ${sec.name}（問題${sec.issueCount}件）\n${issues}`;
+    }).join('\n\n');
+    const tips = (fb.tips || []).map((t, i) => `${i + 1}. ${t}`).join('\n');
+
+    const resultText =
+      `📝 言語チェック結果\n\n` +
+      `🎯 自然さスコア: ${fb.score}/10　${fb.verdict}\n\n` +
+      (patterns ? `🔁 繰り返しパターン:\n${patterns}\n\n` : '') +
+      (sectionLines ? `📋 セクション別:\n${sectionLines}\n\n` : '') +
+      (tips ? `💡 改善ヒント:\n${tips}\n\n` : '') +
+      (fb.summary ? `🔥 総評:\n${fb.summary}` : '');
+
+    const msgs = chunkMessages(resultText, [
+      { label: 'もう一度チェック', text: '#言語チェック' },
+      { label: '#採点', text: '#採点' },
+    ]);
+    await pushMessages(userId, msgs);
+  } catch (e) {
+    console.error('[runLanguageCheck] error:', e);
+    await sendError(userId, `言語チェックでエラーが発生しました。\n（${e.message || 'AIエラー'}）`);
+  }
 }
 
 // ── 理解チェック 問題送信 ──
@@ -481,6 +513,19 @@ async function handleText(ev, userId) {
     return;
   }
 
+  if (/^[#＃]言語チェック/.test(text)) {
+    const scriptBody = text.replace(/^[#＃]言語チェック\s*/, '').trim();
+    if (!scriptBody) {
+      setSession(userId, { action: 'language_check' });
+      await safeReply(ev.replyToken, userId,
+        '📝 言語チェックモード\n\n台本をそのまま送ってください。\n「ですね」などの繰り返しパターンや不自然な表現を検出して指摘します。');
+      return;
+    }
+    await replyProcessing(ev.replyToken, '⏳ 台本を分析中です。少々お待ちください...');
+    await runLanguageCheck(userId, scriptBody);
+    return;
+  }
+
   if (/^[#＃]理解チェック/.test(text)) {
     const msg = textWithQuickReply('🧠 カテゴリを選んでください：', categoryQuickReplyItems('understanding'));
     await safeReplyMessages(ev.replyToken, userId, [msg]);
@@ -549,6 +594,7 @@ async function handleText(ev, userId) {
       '#採点 → 8ステップの採点\n' +
       '#お手本 → お手本スクリプト生成\n' +
       '#理解チェック → 本質理解の深掘り\n' +
+      '#言語チェック → 台本の「ですね」連発など言語チェック\n' +
       '#こじつけ → こじつけ力トレーニング\n' +
       '#リフレーム → リフレーミング・ジム\n' +
       '#逆質問 → 理解度チェック\n\n' +
@@ -574,6 +620,13 @@ async function handleText(ev, userId) {
           return;
         }
         await runGrade(userId, ev.replyToken, session.moduleId, steps);
+        return;
+      }
+
+      case 'language_check': {
+        clearSession(userId);
+        await replyProcessing(ev.replyToken, '⏳ 台本を分析中です。少々お待ちください...');
+        await runLanguageCheck(userId, text);
         return;
       }
 

@@ -14,6 +14,7 @@ import ReframeGym from './components/ReframeGym';
 import KojitsukeMode from './components/KojitsukeMode';
 import History from './components/History';
 import UnderstandingMode from './components/UnderstandingMode';
+import ScriptNaturalnessChecker from './components/ScriptNaturalnessChecker';
 
 export default function Page() {
   const [activeModule, setActiveModule] = useState('havefun');
@@ -98,6 +99,7 @@ export default function Page() {
           <button className={'tab' + (mode === 'reframe' ? ' active' : '')} onClick={() => setMode('reframe')}>② リフレ</button>
           <button className={'tab' + (mode === 'kojitsuke' ? ' active' : '')} onClick={() => setMode('kojitsuke')}>③ こじつけ</button>
           <button className={'tab' + (mode === 'understanding' ? ' active' : '')} onClick={() => setMode('understanding')}>🧠 理解</button>
+          <button className={'tab' + (mode === 'language' ? ' active' : '')} onClick={() => setMode('language')}>📝 言語</button>
           <button className={'tab' + (mode === 'history' ? ' active' : '')} onClick={() => setMode('history')}>📋 履歴</button>
         </nav>
 
@@ -105,6 +107,7 @@ export default function Page() {
         {mode === 'reframe' && <ReframeGym />}
         {mode === 'kojitsuke' && <KojitsukeMode />}
         {mode === 'understanding' && <UnderstandingMode userId={userId} name={name} moduleId={activeModule} />}
+        {mode === 'language' && <ScriptNaturalnessChecker />}
         {mode === 'history' && <History userId={userId} name={name} />}
 
         <footer className="app-footer">Have fun System ─ v4.0（個人識別）</footer>
