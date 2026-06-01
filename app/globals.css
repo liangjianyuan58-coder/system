@@ -244,6 +244,8 @@ body {
 .hist-step { font-size: 12.5px; margin-bottom: 7px; }
 .hist-step b { display: block; color: var(--accent); margin-bottom: 2px; }
 .hist-more { width: 100%; margin-top: 8px; background: none; border: 1px solid rgba(255,255,255,.3); border-radius: 4px; color: var(--dim); font-family: inherit; font-size: 11px; padding: 6px; cursor: pointer; }
+.hist-result-link { display: block; width: 100%; margin-top: 6px; padding: 7px; background: rgba(59,130,246,.15); border: 1px solid rgba(59,130,246,.4); border-radius: 4px; color: #60a5fa; font-size: 12px; font-weight: 700; text-align: center; text-decoration: none; }
+.hist-result-link:hover { background: rgba(59,130,246,.25); }
 
 /* ===== 理解チェック (UnderstandingChecker) ===== */
 .uc { }

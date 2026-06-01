@@ -93,6 +93,11 @@ export default function History({ userId, name }) {
                 <button className="hist-more" onClick={() => setOpen((o) => ({ ...o, [id]: !o[id] }))}>
                   {expanded ? '▲ 閉じる' : '▼ 全文を見る'}
                 </button>
+                {it.resultUrl && (
+                  <a className="hist-result-link" href={it.resultUrl} target="_blank" rel="noreferrer">
+                    📊 採点結果を見る
+                  </a>
+                )}
               </li>
             );
           })}
