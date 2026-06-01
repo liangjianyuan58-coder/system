@@ -57,6 +57,13 @@ export default async function ResultPage({ params }) {
       });
 
       // 採点結果をシートに書き戻す（失敗しても表示は続行）
+      const langScore = fb.languageCheck
+        ? `${fb.languageCheck.score}/10 ${fb.languageCheck.verdict}${
+            fb.languageCheck.patterns?.length > 0
+              ? ' / ' + fb.languageCheck.patterns.map((p) => `「${p.ending}」${p.count}回`).join(' ')
+              : ''
+          }`
+        : '';
       updateOutputById(id, {
         total: fb.total != null ? `${fb.total}/80` : '',
         verdict: fb.verdict || '',
@@ -66,6 +73,8 @@ export default async function ResultPage({ params }) {
           : (fb.improvements || ''),
         comment: fb.comment || '',
         rawJson: JSON.stringify(fb),
+        consistencyCheck: fb.consistencyCheck || '',
+        languageScore: langScore,
       }).catch((e) => console.error('[result page] updateOutputById error:', e?.message || e));
     } catch (err) {
       console.error('[result page] gradeOutput error:', err?.message || err);
