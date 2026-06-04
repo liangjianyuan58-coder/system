@@ -103,6 +103,8 @@ export default async function ResultPage({ params }) {
     ['T-UPチェック', fb?.tupCheck],
     ['APのT-UPチェック', fb?.apTupCheck],
     ['APチェック', fb?.apCheck],
+    ['AP理解度', fb?.apUnderstandingCheck],
+    ['AP適切性', fb?.apAppropriatenessCheck],
     ['内容→例→AP 一貫性', fb?.consistencyCheck],
     ['インパルスファクター', fb?.impulseFactorCheck],
     ['アプローチ話法', fb?.approachTechniquesCheck],

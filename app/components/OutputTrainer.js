@@ -233,6 +233,8 @@ function OutputFeedback({ fb, stepLabels }) {
       {fb.tupCheck && <p className="fb-block"><b>T-UPチェック</b>{fb.tupCheck}</p>}
       {fb.apTupCheck && <p className="fb-block"><b>APのT-UPチェック</b>{fb.apTupCheck}</p>}
       {fb.apCheck && <p className="fb-block"><b>APチェック</b>{fb.apCheck}</p>}
+      {fb.apUnderstandingCheck && <p className="fb-block"><b>AP理解度</b>{fb.apUnderstandingCheck}</p>}
+      {fb.apAppropriatenessCheck && <p className="fb-block"><b>AP適切性</b>{fb.apAppropriatenessCheck}</p>}
       {fb.consistencyCheck && <p className="fb-block"><b>内容→例→AP 一貫性</b>{fb.consistencyCheck}</p>}
       {fb.impulseFactorCheck && <p className="fb-block"><b>インパルスファクター</b>{fb.impulseFactorCheck}</p>}
       {fb.approachTechniquesCheck && <p className="fb-block"><b>アプローチ話法</b>{fb.approachTechniquesCheck}</p>}
