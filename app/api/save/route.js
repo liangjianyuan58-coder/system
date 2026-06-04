@@ -45,6 +45,7 @@ export async function POST(request) {
       levelUp: after.level > before,
       streak: u.streak,
       doneToday: u.doneToday,
+      id: u.id,
       ...after,
     });
   } catch (err) {

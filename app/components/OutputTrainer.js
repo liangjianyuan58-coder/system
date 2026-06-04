@@ -26,6 +26,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   const [fb, setFb] = useState(null);
   const [fbLoading, setFbLoading] = useState(false);
   const [fbError, setFbError] = useState('');
+  const [resultId, setResultId] = useState('');
   const [theme, setTheme] = useState('');
   const [modelLoading, setModelLoading] = useState(false);
   const [modelError, setModelError] = useState('');
@@ -46,7 +47,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
 
   useEffect(() => {
     setValues(EMPTY_STATE);
-    setFb(null); setFbError(''); setNote('');
+    setFb(null); setFbError(''); setNote(''); setResultId('');
   }, [moduleId]);
 
   const filled = stepKeys.filter((k) => values[k].trim().length > 0).length;
@@ -116,6 +117,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         playSound(!!res.levelUp);
         clearTimeout(fxTimer.current);
         fxTimer.current = setTimeout(() => setFx((f) => ({ ...f, show: false })), res.levelUp ? 2600 : 1800);
+        if (res.id) setResultId(res.id);
         setNote('記録しました。下の査定FBを確認して、必要なら書き直そう。');
       } else {
         setNote(res?.message || '保存に失敗しました');
@@ -190,6 +192,16 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         </button>
         <div className="submit-note">{allFilled && !sending ? '※ 記録＋AI査定が走ります' : (note || `※ ${stepKeys.length}項目すべて埋めないと記録できません`)}</div>
       </div>
+
+      {resultId && (
+        <section className="window" aria-label="採点結果URL">
+          <div className="window__title">＊ 採点結果ページ</div>
+          <a className="result-url-link" href={`/result/${resultId}`} target="_blank" rel="noreferrer">
+            📊 採点結果を開く
+          </a>
+          <p className="result-url-text">/result/{resultId}</p>
+        </section>
+      )}
 
       {(fbLoading || fb || fbError) && (
         <section className="window fb-window" aria-label="AI査定フィードバック">
