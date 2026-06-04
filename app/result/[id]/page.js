@@ -203,6 +203,14 @@ export default async function ResultPage({ params }) {
           </div>
         )}
 
+        {/* 書き直し例 */}
+        {fb?.directFix?.rewrite && (
+          <div className={styles.card} style={{ borderLeft: '4px solid #f97316' }}>
+            <p className={styles.cardTitle}>✏️ まずここを直せ — {fb.directFix.targetLabel}</p>
+            <p className={styles.cardText} style={{ whiteSpace: 'pre-wrap', background: '#fff7ed', padding: '10px', borderRadius: '8px', color: '#9a3412', lineHeight: 1.8 }}>{fb.directFix.rewrite}</p>
+          </div>
+        )}
+
         {/* コメント */}
         {fb?.comment && (
           <div className={styles.card}>

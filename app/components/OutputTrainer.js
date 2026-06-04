@@ -163,7 +163,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         <p className="flow-lead">迷ったらまず型を。テーマを入れて生成すると、下の{stepKeys.length}欄に模範例が入ります。</p>
         <input className="koji-custom" type="text" placeholder="テーマ（任意）例：クレーム対応 / 飛び込み営業" value={theme} onChange={(e) => setTheme(e.target.value)} />
         <button type="button" className="btn btn--sub model-btn" onClick={genModel} disabled={modelLoading}>
-          {modelLoading ? '生成中...' : '✨ お手本を生成して流し込む'}
+          {modelLoading ? '生成中...' : '✨ 型を生成して流し込む（【　】を自分の言葉に書き換えよう）'}
         </button>
         {modelError && <div className="fb-error">{modelError}</div>}
       </section>
@@ -254,6 +254,12 @@ function OutputFeedback({ fb, stepLabels }) {
       {fb.clarityCheck && <p className="fb-block"><b>初めて聴く人チェック</b>{fb.clarityCheck}</p>}
       {Array.isArray(fb.improvements) && fb.improvements.length > 0 && (
         <div className="fb-block"><b>△ 改善ポイント</b><ul className="fb-improve">{fb.improvements.map((t, i) => <li key={i}>{t}</li>)}</ul></div>
+      )}
+      {fb.directFix?.rewrite && (
+        <div className="fb-block fb-direct-fix">
+          <b>✏️ まずここを直せ — {fb.directFix.targetLabel}</b>
+          <p className="fb-direct-fix-text">{fb.directFix.rewrite}</p>
+        </div>
       )}
       {fb.comment && <p className="fb-comment">{fb.comment}</p>}
 
