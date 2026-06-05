@@ -29,6 +29,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   const [resultId, setResultId] = useState('');
   const [theme, setTheme] = useState('');
   const [modelLoading, setModelLoading] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
   const [modelError, setModelError] = useState('');
   const fxTimer = useRef(null);
 
@@ -78,6 +79,30 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
       setModelError('通信エラー: ' + (e.message || e));
     } finally {
       setModelLoading(false);
+    }
+  }
+
+  // 穴埋めテンプレート生成 → フォームへ流し込む
+  async function genTemplate() {
+    setTemplateLoading(true); setModelError('');
+    try {
+      const res = await fetch('/api/template-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: theme.trim(), moduleId }),
+      }).then((r) => r.json());
+      if (res && res.ok && res.script) {
+        const next = {};
+        stepKeys.forEach((k) => (next[k] = res.script[k] || ''));
+        setValues(next);
+        setNote('型を流し込みました。【　】の部分を自分の言葉に書き換えてから記録しよう。');
+      } else {
+        setModelError(res && res.message ? res.message : 'テンプレート生成に失敗しました');
+      }
+    } catch (e) {
+      setModelError('通信エラー: ' + (e.message || e));
+    } finally {
+      setTemplateLoading(false);
     }
   }
 
@@ -159,11 +184,14 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
 
       {/* お手本スクリプト生成 */}
       <section className="window model-window">
-        <div className="window__title">＊ お手本スクリプトを見る</div>
-        <p className="flow-lead">迷ったらまず型を。テーマを入れて生成すると、下の{stepKeys.length}欄に模範例が入ります。</p>
+        <div className="window__title">＊ お手本 / 穴埋めテンプレートを見る</div>
+        <p className="flow-lead">テーマを入れてどちらかを選んで生成。下の{stepKeys.length}欄に流し込まれます。</p>
         <input className="koji-custom" type="text" placeholder="テーマ（任意）例：クレーム対応 / 飛び込み営業" value={theme} onChange={(e) => setTheme(e.target.value)} />
-        <button type="button" className="btn btn--sub model-btn" onClick={genModel} disabled={modelLoading}>
-          {modelLoading ? '生成中...' : '✨ 型を生成して流し込む（【　】を自分の言葉に書き換えよう）'}
+        <button type="button" className="btn btn--sub model-btn" onClick={genModel} disabled={modelLoading || templateLoading}>
+          {modelLoading ? '生成中...' : '✨ お手本を生成して流し込む'}
+        </button>
+        <button type="button" className="btn btn--sub model-btn" style={{ marginTop: '8px', background: 'rgba(251,191,36,.15)', borderColor: 'rgba(251,191,36,.5)', color: '#fbbf24' }} onClick={genTemplate} disabled={modelLoading || templateLoading}>
+          {templateLoading ? '生成中...' : '📝 穴埋めテンプレートを流し込む（【　】を自分の言葉に書き換えよう）'}
         </button>
         {modelError && <div className="fb-error">{modelError}</div>}
       </section>
