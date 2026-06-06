@@ -26,8 +26,10 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   const [fb, setFb] = useState(null);
   const [fbLoading, setFbLoading] = useState(false);
   const [fbError, setFbError] = useState('');
+  const [resultId, setResultId] = useState('');
   const [theme, setTheme] = useState('');
   const [modelLoading, setModelLoading] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
   const [modelError, setModelError] = useState('');
   const fxTimer = useRef(null);
 
@@ -46,7 +48,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
 
   useEffect(() => {
     setValues(EMPTY_STATE);
-    setFb(null); setFbError(''); setNote('');
+    setFb(null); setFbError(''); setNote(''); setResultId('');
   }, [moduleId]);
 
   const filled = stepKeys.filter((k) => values[k].trim().length > 0).length;
@@ -77,6 +79,30 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
       setModelError('通信エラー: ' + (e.message || e));
     } finally {
       setModelLoading(false);
+    }
+  }
+
+  // 穴埋めテンプレート生成 → フォームへ流し込む
+  async function genTemplate() {
+    setTemplateLoading(true); setModelError('');
+    try {
+      const res = await fetch('/api/template-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: theme.trim(), moduleId }),
+      }).then((r) => r.json());
+      if (res && res.ok && res.script) {
+        const next = {};
+        stepKeys.forEach((k) => (next[k] = res.script[k] || ''));
+        setValues(next);
+        setNote('型を流し込みました。【　】の部分を自分の言葉に書き換えてから記録しよう。');
+      } else {
+        setModelError(res && res.message ? res.message : 'テンプレート生成に失敗しました');
+      }
+    } catch (e) {
+      setModelError('通信エラー: ' + (e.message || e));
+    } finally {
+      setTemplateLoading(false);
     }
   }
 
@@ -116,6 +142,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         playSound(!!res.levelUp);
         clearTimeout(fxTimer.current);
         fxTimer.current = setTimeout(() => setFx((f) => ({ ...f, show: false })), res.levelUp ? 2600 : 1800);
+        if (res.id) setResultId(res.id);
         setNote('記録しました。下の査定FBを確認して、必要なら書き直そう。');
       } else {
         setNote(res?.message || '保存に失敗しました');
@@ -157,11 +184,14 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
 
       {/* お手本スクリプト生成 */}
       <section className="window model-window">
-        <div className="window__title">＊ お手本スクリプトを見る</div>
-        <p className="flow-lead">迷ったらまず型を。テーマを入れて生成すると、下の{stepKeys.length}欄に模範例が入ります。</p>
+        <div className="window__title">＊ お手本 / 穴埋めテンプレートを見る</div>
+        <p className="flow-lead">テーマを入れてどちらかを選んで生成。下の{stepKeys.length}欄に流し込まれます。</p>
         <input className="koji-custom" type="text" placeholder="テーマ（任意）例：クレーム対応 / 飛び込み営業" value={theme} onChange={(e) => setTheme(e.target.value)} />
-        <button type="button" className="btn btn--sub model-btn" onClick={genModel} disabled={modelLoading}>
+        <button type="button" className="btn btn--sub model-btn" onClick={genModel} disabled={modelLoading || templateLoading}>
           {modelLoading ? '生成中...' : '✨ お手本を生成して流し込む'}
+        </button>
+        <button type="button" className="btn btn--sub model-btn" style={{ marginTop: '8px', background: 'rgba(251,191,36,.15)', borderColor: 'rgba(251,191,36,.5)', color: '#fbbf24' }} onClick={genTemplate} disabled={modelLoading || templateLoading}>
+          {templateLoading ? '生成中...' : '📝 穴埋めテンプレートを流し込む（【　】を自分の言葉に書き換えよう）'}
         </button>
         {modelError && <div className="fb-error">{modelError}</div>}
       </section>
@@ -191,12 +221,22 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         <div className="submit-note">{allFilled && !sending ? '※ 記録＋AI査定が走ります' : (note || `※ ${stepKeys.length}項目すべて埋めないと記録できません`)}</div>
       </div>
 
+      {resultId && (
+        <section className="window" aria-label="採点結果URL">
+          <div className="window__title">＊ 採点結果ページ</div>
+          <a className="result-url-link" href={`/result/${resultId}`} target="_blank" rel="noreferrer">
+            📊 採点結果を開く
+          </a>
+          <p className="result-url-text">/result/{resultId}</p>
+        </section>
+      )}
+
       {(fbLoading || fb || fbError) && (
         <section className="window fb-window" aria-label="AI査定フィードバック">
           <div className="window__title">＊ プロマネージャー査定</div>
           {fbLoading && <div className="fb-loading">▼ 査定中… 基準は厳しめにいくぞ</div>}
           {fbError && <div className="fb-error">{fbError}</div>}
-          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} />}
+          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} values={values} />}
         </section>
       )}
 
@@ -213,7 +253,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   );
 }
 
-function OutputFeedback({ fb, stepLabels }) {
+function OutputFeedback({ fb, stepLabels, values }) {
   const pass = fb.verdict === '合格';
   return (
     <div className="fb">
@@ -229,10 +269,44 @@ function OutputFeedback({ fb, stepLabels }) {
           </div>
         ))}
       </div>
+      {fb.stepNotes && Object.entries(fb.stepNotes).some(([, v]) => v) && (
+        <div className="fb-block fb-step-notes">
+          <b>🔍 ステップ別詳細</b>
+          {Object.entries(fb.stepNotes).map(([k, note]) => {
+            if (!note) return null;
+            const submitted = values?.[k] || '';
+            const label = (stepLabels && stepLabels[k]) || k;
+            const score = fb.scores?.[k];
+            const isGood = !!note.good;
+            return (
+              <div key={k} className="fb-step-note">
+                <div className="fb-step-note__head">
+                  {label}
+                  {score != null ? <span className="fb-step-note__score" style={{ color: isGood ? '#15803d' : '#ef4444' }}>{score}点</span> : ''}
+                </div>
+                {submitted && <p className="fb-step-note__text">{submitted}</p>}
+                {isGood ? (
+                  <div className="fb-step-note__good">
+                    <span>⭐ ここが強み — 次も意識して再現しよう</span>
+                    <p>{note.good}</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="fb-step-note__why"><span>⚠️ {note.issue}</span><p>{note.whyBad}</p></div>
+                    {note.howToFix && <div className="fb-step-note__fix"><span>✅ こう直す</span><p>{note.howToFix}</p></div>}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
       {fb.good && <p className="fb-block fb-good"><b>◎ Good</b>{fb.good}</p>}
       {fb.tupCheck && <p className="fb-block"><b>T-UPチェック</b>{fb.tupCheck}</p>}
       {fb.apTupCheck && <p className="fb-block"><b>APのT-UPチェック</b>{fb.apTupCheck}</p>}
       {fb.apCheck && <p className="fb-block"><b>APチェック</b>{fb.apCheck}</p>}
+      {fb.apUnderstandingCheck && <p className="fb-block"><b>AP理解度</b>{fb.apUnderstandingCheck}</p>}
+      {fb.apAppropriatenessCheck && <p className="fb-block"><b>AP適切性</b>{fb.apAppropriatenessCheck}</p>}
       {fb.consistencyCheck && <p className="fb-block"><b>内容→例→AP 一貫性</b>{fb.consistencyCheck}</p>}
       {fb.impulseFactorCheck && <p className="fb-block"><b>インパルスファクター</b>{fb.impulseFactorCheck}</p>}
       {fb.approachTechniquesCheck && <p className="fb-block"><b>アプローチ話法</b>{fb.approachTechniquesCheck}</p>}
@@ -240,6 +314,12 @@ function OutputFeedback({ fb, stepLabels }) {
       {fb.clarityCheck && <p className="fb-block"><b>初めて聴く人チェック</b>{fb.clarityCheck}</p>}
       {Array.isArray(fb.improvements) && fb.improvements.length > 0 && (
         <div className="fb-block"><b>△ 改善ポイント</b><ul className="fb-improve">{fb.improvements.map((t, i) => <li key={i}>{t}</li>)}</ul></div>
+      )}
+      {fb.directFix?.rewrite && (
+        <div className="fb-block fb-direct-fix">
+          <b>✏️ まずここを直せ — {fb.directFix.targetLabel}</b>
+          <p className="fb-direct-fix-text">{fb.directFix.rewrite}</p>
+        </div>
       )}
       {fb.comment && <p className="fb-comment">{fb.comment}</p>}
 

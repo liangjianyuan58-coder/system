@@ -103,6 +103,8 @@ export default async function ResultPage({ params }) {
     ['T-UPチェック', fb?.tupCheck],
     ['APのT-UPチェック', fb?.apTupCheck],
     ['APチェック', fb?.apCheck],
+    ['AP理解度', fb?.apUnderstandingCheck],
+    ['AP適切性', fb?.apAppropriatenessCheck],
     ['内容→例→AP 一貫性', fb?.consistencyCheck],
     ['インパルスファクター', fb?.impulseFactorCheck],
     ['アプローチ話法', fb?.approachTechniquesCheck],
@@ -186,6 +188,53 @@ export default async function ResultPage({ params }) {
           </div>
         )}
 
+        {/* ステップ別詳細注釈（良い点 + 問題点 + 直し方） */}
+        {fb?.stepNotes && scoreLabels.some(([k]) => fb.stepNotes[k]) && (
+          <div className={styles.card}>
+            <p className={styles.cardTitle}>🔍 ステップ別詳細</p>
+            <div className={styles.checkList}>
+              {scoreLabels.map(([k, l]) => {
+                const note = fb.stepNotes[k];
+                if (!note) return null;
+                const submitted = result[k] || '';
+                const isGood = !!note.good;
+                const scoreVal = scores[k] ?? '-';
+                return (
+                  <div key={k} className={styles.checkItem}>
+                    <span className={styles.checkLabel}>
+                      {l}　<span style={{ color: isGood ? '#15803d' : '#ef4444' }}>{scoreVal}点</span>
+                    </span>
+                    {submitted && (
+                      <p className={styles.checkText} style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '6px', marginBottom: '8px', color: '#475569', fontSize: '12px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                        {submitted}
+                      </p>
+                    )}
+                    {isGood ? (
+                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px 10px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#15803d', display: 'block', marginBottom: '3px' }}>⭐ ここが強み — 次も意識して再現しよう</span>
+                        <p style={{ fontSize: '12px', color: '#14532d', lineHeight: 1.7, margin: 0 }}>{note.good}</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', padding: '8px 10px' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#c2410c', display: 'block', marginBottom: '3px' }}>⚠️ {note.issue}</span>
+                          <p style={{ fontSize: '12px', color: '#9a3412', lineHeight: 1.7, margin: 0 }}>{note.whyBad}</p>
+                        </div>
+                        {note.howToFix && (
+                          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px 10px' }}>
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#15803d', display: 'block', marginBottom: '3px' }}>✅ こう直す</span>
+                            <p style={{ fontSize: '12px', color: '#14532d', lineHeight: 1.7, margin: 0 }}>{note.howToFix}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* 各チェック項目 */}
         {checks.length > 0 && (
           <div className={styles.card}>
@@ -198,6 +247,14 @@ export default async function ResultPage({ params }) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* 書き直し例 */}
+        {fb?.directFix?.rewrite && (
+          <div className={styles.card} style={{ borderLeft: '4px solid #f97316' }}>
+            <p className={styles.cardTitle}>✏️ まずここを直せ — {fb.directFix.targetLabel}</p>
+            <p className={styles.cardText} style={{ whiteSpace: 'pre-wrap', background: '#fff7ed', padding: '10px', borderRadius: '8px', color: '#9a3412', lineHeight: 1.8 }}>{fb.directFix.rewrite}</p>
           </div>
         )}
 
