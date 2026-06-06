@@ -236,7 +236,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
           <div className="window__title">＊ プロマネージャー査定</div>
           {fbLoading && <div className="fb-loading">▼ 査定中… 基準は厳しめにいくぞ</div>}
           {fbError && <div className="fb-error">{fbError}</div>}
-          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} />}
+          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} values={values} />}
         </section>
       )}
 
@@ -253,7 +253,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   );
 }
 
-function OutputFeedback({ fb, stepLabels }) {
+function OutputFeedback({ fb, stepLabels, values }) {
   const pass = fb.verdict === '合格';
   return (
     <div className="fb">
@@ -269,6 +269,25 @@ function OutputFeedback({ fb, stepLabels }) {
           </div>
         ))}
       </div>
+      {fb.stepNotes && Object.entries(fb.stepNotes).some(([, v]) => v) && (
+        <div className="fb-block fb-step-notes">
+          <b>🔍 ステップ別詳細</b>
+          {Object.entries(fb.stepNotes).map(([k, note]) => {
+            if (!note) return null;
+            const submitted = values?.[k] || '';
+            const label = (stepLabels && stepLabels[k]) || k;
+            const score = fb.scores?.[k];
+            return (
+              <div key={k} className="fb-step-note">
+                <div className="fb-step-note__head">{label}{score != null ? <span className="fb-step-note__score">{score}点</span> : ''}</div>
+                {submitted && <p className="fb-step-note__text">{submitted}</p>}
+                <div className="fb-step-note__why"><span>⚠️ {note.issue}</span><p>{note.whyBad}</p></div>
+                {note.howToFix && <div className="fb-step-note__fix"><span>✅ こう直す</span><p>{note.howToFix}</p></div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
       {fb.good && <p className="fb-block fb-good"><b>◎ Good</b>{fb.good}</p>}
       {fb.tupCheck && <p className="fb-block"><b>T-UPチェック</b>{fb.tupCheck}</p>}
       {fb.apTupCheck && <p className="fb-block"><b>APのT-UPチェック</b>{fb.apTupCheck}</p>}

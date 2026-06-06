@@ -261,6 +261,18 @@ body {
 .uc-wrong { color: #ef4444; }
 .fb-direct-fix { background: #fff7ed !important; border-left: 4px solid #f97316 !important; }
 .fb-direct-fix-text { font-size: 13px; line-height: 1.8; color: #9a3412; margin: 8px 0 0; white-space: pre-wrap; }
+.fb-step-notes { display: flex; flex-direction: column; gap: 12px; }
+.fb-step-note { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+.fb-step-note:last-child { border-bottom: none; }
+.fb-step-note__head { font-size: 12px; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 6px; }
+.fb-step-note__score { font-size: 11px; color: #ef4444; background: rgba(239,68,68,.15); padding: 1px 6px; border-radius: 4px; }
+.fb-step-note__text { font-size: 11px; color: var(--dim); background: rgba(255,255,255,.05); border-radius: 5px; padding: 7px 9px; line-height: 1.65; margin: 0; white-space: pre-wrap; }
+.fb-step-note__why { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.25); border-radius: 5px; padding: 7px 9px; }
+.fb-step-note__why span { font-size: 10px; font-weight: 700; color: #fbbf24; display: block; margin-bottom: 3px; }
+.fb-step-note__why p { font-size: 12px; color: #fde68a; line-height: 1.65; margin: 0; }
+.fb-step-note__fix { background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.25); border-radius: 5px; padding: 7px 9px; }
+.fb-step-note__fix span { font-size: 10px; font-weight: 700; color: #22c55e; display: block; margin-bottom: 3px; }
+.fb-step-note__fix p { font-size: 12px; color: #bbf7d0; line-height: 1.65; margin: 0; }
 
 /* ===== 理解チェック (UnderstandingChecker) ===== */
 .uc { }
