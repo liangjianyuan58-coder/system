@@ -40,6 +40,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       ok: true,
+      id: u.id,
       message: 'アウトプットを記録しました！',
       gained: EXP_PER_OUTPUT,
       levelUp: after.level > before,

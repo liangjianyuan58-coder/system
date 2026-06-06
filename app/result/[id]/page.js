@@ -188,7 +188,7 @@ export default async function ResultPage({ params }) {
           </div>
         )}
 
-        {/* ステップ別詳細注釈（提出文 + なぜダメか + どう直す） */}
+        {/* ステップ別詳細注釈（良い点 + 問題点 + 直し方） */}
         {fb?.stepNotes && scoreLabels.some(([k]) => fb.stepNotes[k]) && (
           <div className={styles.card}>
             <p className={styles.cardTitle}>🔍 ステップ別詳細</p>
@@ -197,26 +197,37 @@ export default async function ResultPage({ params }) {
                 const note = fb.stepNotes[k];
                 if (!note) return null;
                 const submitted = result[k] || '';
+                const isGood = !!note.good;
+                const scoreVal = scores[k] ?? '-';
                 return (
                   <div key={k} className={styles.checkItem}>
-                    <span className={styles.checkLabel}>{l}　<span style={{ color: '#ef4444' }}>{scores[k] ?? '-'}点</span></span>
+                    <span className={styles.checkLabel}>
+                      {l}　<span style={{ color: isGood ? '#15803d' : '#ef4444' }}>{scoreVal}点</span>
+                    </span>
                     {submitted && (
                       <p className={styles.checkText} style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '6px', marginBottom: '8px', color: '#475569', fontSize: '12px', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
                         {submitted}
                       </p>
                     )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', padding: '8px 10px' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#c2410c', display: 'block', marginBottom: '3px' }}>⚠️ {note.issue}</span>
-                        <p style={{ fontSize: '12px', color: '#9a3412', lineHeight: 1.7, margin: 0 }}>{note.whyBad}</p>
+                    {isGood ? (
+                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px 10px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#15803d', display: 'block', marginBottom: '3px' }}>⭐ ここが強み — 次も意識して再現しよう</span>
+                        <p style={{ fontSize: '12px', color: '#14532d', lineHeight: 1.7, margin: 0 }}>{note.good}</p>
                       </div>
-                      {note.howToFix && (
-                        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px 10px' }}>
-                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#15803d', display: 'block', marginBottom: '3px' }}>✅ こう直す</span>
-                          <p style={{ fontSize: '12px', color: '#14532d', lineHeight: 1.7, margin: 0 }}>{note.howToFix}</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', padding: '8px 10px' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#c2410c', display: 'block', marginBottom: '3px' }}>⚠️ {note.issue}</span>
+                          <p style={{ fontSize: '12px', color: '#9a3412', lineHeight: 1.7, margin: 0 }}>{note.whyBad}</p>
                         </div>
-                      )}
-                    </div>
+                        {note.howToFix && (
+                          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px 10px' }}>
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#15803d', display: 'block', marginBottom: '3px' }}>✅ こう直す</span>
+                            <p style={{ fontSize: '12px', color: '#14532d', lineHeight: 1.7, margin: 0 }}>{note.howToFix}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

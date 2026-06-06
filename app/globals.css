@@ -313,3 +313,43 @@ body {
 .fb-lang-improved { }
 .fb-lang-improved summary { font-size: 12px; color: var(--dim); cursor: pointer; }
 .fb-lang-improved p { font-size: 12px; color: #3cff8e; margin-top: 6px; line-height: 1.75; white-space: pre-wrap; background: rgba(60,255,142,.07); border-radius: 4px; padding: 8px; }
+
+/* ===== 結果URLリンク ===== */
+.result-url-link { display: block; padding: 10px 14px; background: rgba(59,130,246,.15); border: 1px solid rgba(59,130,246,.4); border-radius: 5px; color: #60a5fa; font-size: 14px; font-weight: 700; text-decoration: none; text-align: center; }
+.result-url-link:hover { background: rgba(59,130,246,.25); }
+.result-url-text { font-size: 11px; color: var(--dim); margin: 6px 0 0; text-align: center; word-break: break-all; }
+
+/* ===== ステップ別詳細注釈 ===== */
+.fb-direct-fix { background: rgba(249,115,22,.08) !important; border-left: 4px solid #f97316 !important; }
+.fb-direct-fix-text { font-size: 13px; line-height: 1.8; color: #fbbf24; margin: 8px 0 0; white-space: pre-wrap; }
+.fb-step-notes { display: flex; flex-direction: column; gap: 12px; }
+.fb-step-note { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+.fb-step-note:last-child { border-bottom: none; }
+.fb-step-note__head { font-size: 12px; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 6px; }
+.fb-step-note__score { font-size: 11px; background: rgba(255,255,255,.1); padding: 1px 6px; border-radius: 4px; }
+.fb-step-note__text { font-size: 11px; color: var(--dim); background: rgba(255,255,255,.05); border-radius: 5px; padding: 7px 9px; line-height: 1.65; margin: 0; white-space: pre-wrap; }
+.fb-step-note__why { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.25); border-radius: 5px; padding: 7px 9px; }
+.fb-step-note__why span { font-size: 10px; font-weight: 700; color: #fbbf24; display: block; margin-bottom: 3px; }
+.fb-step-note__why p { font-size: 12px; color: #fde68a; line-height: 1.65; margin: 0; }
+.fb-step-note__fix { background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.25); border-radius: 5px; padding: 7px 9px; }
+.fb-step-note__fix span { font-size: 10px; font-weight: 700; color: #22c55e; display: block; margin-bottom: 3px; }
+.fb-step-note__fix p { font-size: 12px; color: #bbf7d0; line-height: 1.65; margin: 0; }
+.fb-step-note__good { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.35); border-radius: 5px; padding: 7px 9px; }
+.fb-step-note__good span { font-size: 10px; font-weight: 700; color: #4ade80; display: block; margin-bottom: 3px; }
+.fb-step-note__good p { font-size: 12px; color: #bbf7d0; line-height: 1.65; margin: 0; }
+
+/* ===== 強みパネル ===== */
+.strengths-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.strength-item { background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.25); border-radius: 5px; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; }
+.strength-item__head { display: flex; align-items: center; gap: 6px; }
+.strength-item__label { font-size: 12px; font-weight: 700; color: #4ade80; }
+.strength-item__badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(74,222,128,.2); color: #4ade80; }
+.strength-item__badge--new { background: rgba(251,191,36,.2); color: #fbbf24; }
+.strength-item__desc { font-size: 11px; color: #bbf7d0; line-height: 1.6; }
+/* ===== 退行アラート ===== */
+.fb-regression { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.fb-regression b { font-size: 12px; color: #f87171; }
+.fb-regression-item { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; background: rgba(239,68,68,.05); border-radius: 4px; }
+.fb-regression-label { font-size: 11px; font-weight: 700; color: #f87171; }
+.fb-regression-scores { font-size: 11px; color: #fca5a5; }
+.fb-regression-desc { font-size: 12px; color: #fecaca; line-height: 1.6; margin: 2px 0 0; }
