@@ -13,7 +13,8 @@ const STEP_VIEW = [
   ['example', '④一般的な例'],
   ['workExample', '⑤稼働における例'],
   ['reconclusion', '⑥再結論'],
-  ['ap', '⑦AP'],
+  ['apTup', '⑦APのT-UP'],
+  ['ap', '⑧AP'],
 ];
 
 function fmt(ts) {
