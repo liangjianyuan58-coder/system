@@ -28,7 +28,13 @@ export async function POST(request) {
     }
 
     const before = await currentLevel(data.userId);
+    const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+    const resultUrl = appUrl ? `${appUrl}/result/${id}` : '';
     const u = await appendOutput({
+      id,
+      resultUrl,
       userId: String(data.userId).trim(),
       name: String(data.name).trim(),
       moduleId: data.moduleId || '',
@@ -40,13 +46,12 @@ export async function POST(request) {
 
     return NextResponse.json({
       ok: true,
-      id: u.id,
+      id,
       message: 'アウトプットを記録しました！',
       gained: EXP_PER_OUTPUT,
       levelUp: after.level > before,
       streak: u.streak,
       doneToday: u.doneToday,
-      id: u.id,
       ...after,
     });
   } catch (err) {
