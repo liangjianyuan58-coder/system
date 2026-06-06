@@ -31,6 +31,8 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   const [modelLoading, setModelLoading] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(false);
   const [modelError, setModelError] = useState('');
+  const [strengths, setStrengths] = useState([]);
+  const [regressions, setRegressions] = useState([]);
   const fxTimer = useRef(null);
 
   useEffect(() => {
@@ -43,6 +45,10 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         setStreak(d.streak ?? 0);
         setDoneToday(!!d.doneToday);
       })
+      .catch(() => {});
+    fetch('/api/strengths?userId=' + encodeURIComponent(userId))
+      .then((r) => r.json())
+      .then((d) => { if (d?.ok) setStrengths(d.strengths || []); })
       .catch(() => {});
   }, [userId]);
 
@@ -126,7 +132,24 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     })
       .then((r) => r.json())
-      .then((res) => { if (res && res.ok) setFb(res.feedback); else setFbError(res?.message || 'AI査定に失敗しました'); })
+      .then((res) => {
+        if (res && res.ok) {
+          setFb(res.feedback);
+          // Update strengths and detect regressions
+          fetch('/api/strengths', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, name, stepNotes: res.feedback.stepNotes, scores: res.feedback.scores }),
+          }).then((r) => r.json()).then((d) => {
+            if (d?.ok) {
+              setStrengths(d.updated || []);
+              setRegressions(d.regressions || []);
+            }
+          }).catch(() => {});
+        } else {
+          setFbError(res?.message || 'AI査定に失敗しました');
+        }
+      })
       .catch((e) => setFbError('AI査定通信エラー: ' + (e.message || e)))
       .finally(() => setFbLoading(false));
 
@@ -196,6 +219,28 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
         {modelError && <div className="fb-error">{modelError}</div>}
       </section>
 
+      {/* あなたの武器 — 強みパネル */}
+      {strengths.length > 0 && (
+        <section className="window" aria-label="あなたの武器">
+          <div className="window__title">＊ あなたの武器</div>
+          <p className="flow-lead">前回までに確認された強み。今回も意識して書こう。</p>
+          <div className="strengths-list">
+            {strengths.map((s) => (
+              <div className="strength-item" key={s.key}>
+                <div className="strength-item__head">
+                  <span className="strength-item__label">{s.label}</span>
+                  {s.count >= 2
+                    ? <span className="strength-item__badge">★ 確立</span>
+                    : <span className="strength-item__badge strength-item__badge--new">初確認</span>
+                  }
+                </div>
+                <span className="strength-item__desc">{s.description}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* 7ステップフォーム */}
       <section className="window flow-window" aria-label="アウトプットフォーム">
         <div className="window__title">＊ 黄金のアウトプットフロー</div>
@@ -236,7 +281,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
           <div className="window__title">＊ プロマネージャー査定</div>
           {fbLoading && <div className="fb-loading">▼ 査定中… 基準は厳しめにいくぞ</div>}
           {fbError && <div className="fb-error">{fbError}</div>}
-          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} values={values} />}
+          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} values={values} regressions={regressions} />}
         </section>
       )}
 
@@ -253,10 +298,22 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   );
 }
 
-function OutputFeedback({ fb, stepLabels, values }) {
+function OutputFeedback({ fb, stepLabels, values, regressions }) {
   const pass = fb.verdict === '合格';
   return (
     <div className="fb">
+      {regressions?.length > 0 && (
+        <div className="fb-regression">
+          <b>⚠️ 前回の強みが落ちています</b>
+          {regressions.map(r => (
+            <div key={r.key} className="fb-regression-item">
+              <span className="fb-regression-label">{r.label}</span>
+              <span className="fb-regression-scores">{r.prevScore}点 → {r.newScore}点</span>
+              <p className="fb-regression-desc">「{r.description}」を意識してもう一度書き直してみよう</p>
+            </div>
+          ))}
+        </div>
+      )}
       <div className={'fb-verdict ' + (pass ? 'pass' : 'fail')}>
         {pass ? '✓ 合格' : '✗ 要書き直し'}　<span className="fb-total">{fb.total} / 80 点</span>
       </div>
