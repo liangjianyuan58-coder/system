@@ -141,6 +141,14 @@ export default async function ResultPage({ params }) {
           <div className={`${styles.verdict} ${isPassed ? styles.pass : styles.fail}`}>
             {fb?.verdict ?? '-'}
           </div>
+          {!isPassed && fb?.verdict && (
+            <a
+              href="/"
+              className={styles.retryLink}
+            >
+              ✏️ アプリで書き直す
+            </a>
+          )}
         </div>
 
         {/* 各ステップのスコア */}
@@ -215,17 +223,9 @@ export default async function ResultPage({ params }) {
                         <p style={{ fontSize: '12px', color: '#14532d', lineHeight: 1.7, margin: 0 }}>{note.good}</p>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', padding: '8px 10px' }}>
-                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#c2410c', display: 'block', marginBottom: '3px' }}>⚠️ {note.issue}</span>
-                          <p style={{ fontSize: '12px', color: '#9a3412', lineHeight: 1.7, margin: 0 }}>{note.whyBad}</p>
-                        </div>
-                        {note.howToFix && (
-                          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px 10px' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#15803d', display: 'block', marginBottom: '3px' }}>✅ こう直す</span>
-                            <p style={{ fontSize: '12px', color: '#14532d', lineHeight: 1.7, margin: 0 }}>{note.howToFix}</p>
-                          </div>
-                        )}
+                      <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', padding: '8px 10px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#c2410c', display: 'block', marginBottom: '3px' }}>⚠️ {note.issue}</span>
+                        <p style={{ fontSize: '12px', color: '#9a3412', lineHeight: 1.7, margin: 0 }}>{note.whyBad}</p>
                       </div>
                     )}
                   </div>
@@ -247,14 +247,6 @@ export default async function ResultPage({ params }) {
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* 書き直し例 */}
-        {fb?.directFix?.rewrite && (
-          <div className={styles.card} style={{ borderLeft: '4px solid #f97316' }}>
-            <p className={styles.cardTitle}>✏️ まずここを直せ — {fb.directFix.targetLabel}</p>
-            <p className={styles.cardText} style={{ whiteSpace: 'pre-wrap', background: '#fff7ed', padding: '10px', borderRadius: '8px', color: '#9a3412', lineHeight: 1.8 }}>{fb.directFix.rewrite}</p>
           </div>
         )}
 

@@ -86,6 +86,19 @@
   color: #c2410c;
 }
 
+.retryLink {
+  display: block;
+  margin-top: 14px;
+  padding: 12px 20px;
+  background: #1e40af;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 10px;
+  text-align: center;
+  text-decoration: none;
+}
+
 /* ── カード共通 ── */
 .card {
   background: #fff;
