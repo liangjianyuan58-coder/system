@@ -281,10 +281,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
           <div className="window__title">＊ プロマネージャー査定</div>
           {fbLoading && <div className="fb-loading">▼ 査定中… 基準は厳しめにいくぞ</div>}
           {fbError && <div className="fb-error">{fbError}</div>}
-          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} values={values} moduleId={moduleId} onPatchValue={(key, text) => {
-            setValues(v => ({ ...v, [key]: text }));
-            setNote(`${STEP_LABELS[key] || key}を書き直しました。確認してから再記録しよう。`);
-          }} regressions={regressions} />}
+          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} values={values} regressions={regressions} />}
         </section>
       )}
 
@@ -301,23 +298,8 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   );
 }
 
-function OutputFeedback({ fb, stepLabels, values, moduleId, onPatchValue, regressions }) {
+function OutputFeedback({ fb, stepLabels, values, regressions }) {
   const pass = fb.verdict === '合格';
-  const [rewriteLoading, setRewriteLoading] = useState({});
-  const [rewriteResults, setRewriteResults] = useState({});
-
-  async function handleRewrite(key, label, original, note) {
-    setRewriteLoading(s => ({ ...s, [key]: true }));
-    try {
-      const res = await fetch('/api/rewrite-step', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ moduleId, stepKey: key, stepLabel: label, original, issue: note.issue, howToFix: note.howToFix }),
-      }).then(r => r.json());
-      if (res.ok) setRewriteResults(s => ({ ...s, [key]: res.rewritten }));
-    } catch {}
-    finally { setRewriteLoading(s => ({ ...s, [key]: false })); }
-  }
   return (
     <div className="fb">
       {regressions?.length > 0 && (
@@ -369,22 +351,6 @@ function OutputFeedback({ fb, stepLabels, values, moduleId, onPatchValue, regres
                   <>
                     <div className="fb-step-note__why"><span>⚠️ {note.issue}</span><p>{note.whyBad}</p></div>
                     {note.howToFix && <div className="fb-step-note__fix"><span>✅ こう直す</span><p>{note.howToFix}</p></div>}
-                    {/* rewrite result or button */}
-                    {rewriteResults[k] ? (
-                      <div className="fb-rewrite-result">
-                        <p className="fb-rewrite-text">{rewriteResults[k]}</p>
-                        <button className="btn btn--sub fb-rewrite-use" type="button"
-                          onClick={() => { onPatchValue?.(k, rewriteResults[k]); setRewriteResults(s => ({ ...s, [k]: null })); }}>
-                          ✅ これをフォームに反映する
-                        </button>
-                      </div>
-                    ) : (
-                      <button className="btn btn--sub fb-rewrite-btn" type="button"
-                        disabled={rewriteLoading[k]}
-                        onClick={() => handleRewrite(k, label, submitted, note)}>
-                        {rewriteLoading[k] ? '書き直し中...' : '✍️ AIに書き直させる'}
-                      </button>
-                    )}
                   </>
                 )}
               </div>
@@ -406,14 +372,10 @@ function OutputFeedback({ fb, stepLabels, values, moduleId, onPatchValue, regres
       {Array.isArray(fb.improvements) && fb.improvements.length > 0 && (
         <div className="fb-block"><b>△ 改善ポイント</b><ul className="fb-improve">{fb.improvements.map((t, i) => <li key={i}>{t}</li>)}</ul></div>
       )}
-      {fb?.directFix?.rewrite && (
+      {fb.directFix?.rewrite && (
         <div className="fb-block fb-direct-fix">
           <b>✏️ まずここを直せ — {fb.directFix.targetLabel}</b>
           <p className="fb-direct-fix-text">{fb.directFix.rewrite}</p>
-          <button className="btn btn--sub fb-rewrite-use" type="button"
-            onClick={() => onPatchValue?.(fb.directFix.targetStep, fb.directFix.rewrite)}>
-            ✅ これをフォームに反映する
-          </button>
         </div>
       )}
       {fb.comment && <p className="fb-comment">{fb.comment}</p>}
