@@ -33,6 +33,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   const [modelError, setModelError] = useState('');
   const [strengths, setStrengths] = useState([]);
   const [regressions, setRegressions] = useState([]);
+  const [fbRegrading, setFbRegrading] = useState(false);
   const fxTimer = useRef(null);
 
   useEffect(() => {
@@ -109,6 +110,24 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
       setModelError('通信エラー: ' + (e.message || e));
     } finally {
       setTemplateLoading(false);
+    }
+  }
+
+  async function regrade(key, newText) {
+    setValues((v) => ({ ...v, [key]: newText }));
+    setFbLoading(true); setFbError(''); setFbRegrading(true);
+    const payload = { userId, name, moduleId };
+    stepKeys.forEach((k) => (payload[k] = k === key ? newText.trim() : values[k].trim()));
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      }).then((r) => r.json());
+      if (res?.ok) setFb(res.feedback);
+      else setFbError(res?.message || '再採点に失敗しました');
+    } catch (e) {
+      setFbError('再採点通信エラー: ' + (e.message || e));
+    } finally {
+      setFbLoading(false); setFbRegrading(false);
     }
   }
 
@@ -281,7 +300,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
           <div className="window__title">＊ プロマネージャー査定</div>
           {fbLoading && <div className="fb-loading">▼ 査定中… 基準は厳しめにいくぞ</div>}
           {fbError && <div className="fb-error">{fbError}</div>}
-          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} values={values} regressions={regressions} />}
+          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} values={values} regressions={regressions} onRegrade={regrade} regrading={fbRegrading} />}
         </section>
       )}
 
@@ -298,7 +317,8 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   );
 }
 
-function OutputFeedback({ fb, stepLabels, values, regressions }) {
+function OutputFeedback({ fb, stepLabels, values, regressions, onRegrade, regrading }) {
+  const [editTexts, setEditTexts] = useState({});
   const pass = fb.verdict === '合格';
   return (
     <div className="fb">
@@ -350,7 +370,22 @@ function OutputFeedback({ fb, stepLabels, values, regressions }) {
                 ) : (
                   <>
                     <div className="fb-step-note__why"><span>⚠️ {note.issue}</span><p>{note.whyBad}</p></div>
-                    {note.howToFix && <div className="fb-step-note__fix"><span>✅ こう直す</span><p>{note.howToFix}</p></div>}
+                    <div className="fb-regrade-area">
+                      <textarea
+                        className="fb-regrade-input"
+                        rows={3}
+                        value={editTexts[k] !== undefined ? editTexts[k] : (values?.[k] || '')}
+                        onChange={(e) => setEditTexts((t) => ({ ...t, [k]: e.target.value }))}
+                        placeholder="ここを書き直して再採点…"
+                      />
+                      <button
+                        className="fb-regrade-btn"
+                        disabled={regrading}
+                        onClick={() => onRegrade?.(k, editTexts[k] !== undefined ? editTexts[k] : (values?.[k] || ''))}
+                      >
+                        {regrading ? '採点中…' : '↩ この内容で再採点'}
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
@@ -371,12 +406,6 @@ function OutputFeedback({ fb, stepLabels, values, regressions }) {
       {fb.clarityCheck && <p className="fb-block"><b>初めて聴く人チェック</b>{fb.clarityCheck}</p>}
       {Array.isArray(fb.improvements) && fb.improvements.length > 0 && (
         <div className="fb-block"><b>△ 改善ポイント</b><ul className="fb-improve">{fb.improvements.map((t, i) => <li key={i}>{t}</li>)}</ul></div>
-      )}
-      {fb.directFix?.rewrite && (
-        <div className="fb-block fb-direct-fix">
-          <b>✏️ まずここを直せ — {fb.directFix.targetLabel}</b>
-          <p className="fb-direct-fix-text">{fb.directFix.rewrite}</p>
-        </div>
       )}
       {fb.comment && <p className="fb-comment">{fb.comment}</p>}
 
