@@ -300,7 +300,7 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
           <div className="window__title">＊ プロマネージャー査定</div>
           {fbLoading && <div className="fb-loading">▼ 査定中… 基準は厳しめにいくぞ</div>}
           {fbError && <div className="fb-error">{fbError}</div>}
-          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} values={values} regressions={regressions} onRegrade={regrade} regrading={fbRegrading} />}
+          {fb && <OutputFeedback fb={fb} stepLabels={STEP_LABELS} values={values} regressions={regressions} onRegrade={regrade} regrading={fbRegrading} moduleId={moduleId} />}
         </section>
       )}
 
@@ -317,9 +317,31 @@ export default function OutputTrainer({ userId, name, moduleId, onNeedName }) {
   );
 }
 
-function OutputFeedback({ fb, stepLabels, values, regressions, onRegrade, regrading }) {
+function OutputFeedback({ fb, stepLabels, values, regressions, onRegrade, regrading, moduleId }) {
   const [editTexts, setEditTexts] = useState({});
+  const [regradeCount, setRegradeCount] = useState({});
+  const [hintTexts, setHintTexts] = useState({});
+  const [hintLoading, setHintLoading] = useState({});
   const pass = fb.verdict === '合格';
+
+  function handleRegrade(k, text) {
+    setRegradeCount((c) => ({ ...c, [k]: (c[k] || 0) + 1 }));
+    setHintTexts((h) => ({ ...h, [k]: undefined }));
+    onRegrade?.(k, text);
+  }
+
+  async function fetchHint(k, note) {
+    setHintLoading((h) => ({ ...h, [k]: true }));
+    try {
+      const res = await fetch('/api/hint-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moduleId, stepKey: k, stepLabel: stepLabels?.[k] || k, issue: note.issue, whyBad: note.whyBad }),
+      }).then((r) => r.json());
+      if (res?.ok) setHintTexts((h) => ({ ...h, [k]: res.hint }));
+    } catch {}
+    finally { setHintLoading((h) => ({ ...h, [k]: false })); }
+  }
   return (
     <div className="fb">
       {regressions?.length > 0 && (
@@ -370,6 +392,21 @@ function OutputFeedback({ fb, stepLabels, values, regressions, onRegrade, regrad
                 ) : (
                   <>
                     <div className="fb-step-note__why"><span>⚠️ {note.issue}</span><p>{note.whyBad}</p></div>
+                    {(regradeCount[k] || 0) >= 2 && (
+                      <div className="fb-hint-area">
+                        {hintTexts[k] ? (
+                          <div className="fb-hint-text">💡 {hintTexts[k]}</div>
+                        ) : (
+                          <button
+                            className="fb-hint-btn"
+                            disabled={hintLoading[k]}
+                            onClick={() => fetchHint(k, note)}
+                          >
+                            {hintLoading[k] ? '考え中…' : '💡 ヒントをもらう'}
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <div className="fb-regrade-area">
                       <textarea
                         className="fb-regrade-input"
@@ -381,7 +418,7 @@ function OutputFeedback({ fb, stepLabels, values, regressions, onRegrade, regrad
                       <button
                         className="fb-regrade-btn"
                         disabled={regrading}
-                        onClick={() => onRegrade?.(k, editTexts[k] !== undefined ? editTexts[k] : (values?.[k] || ''))}
+                        onClick={() => handleRegrade(k, editTexts[k] !== undefined ? editTexts[k] : (values?.[k] || ''))}
                       >
                         {regrading ? '採点中…' : '↩ この内容で再採点'}
                       </button>

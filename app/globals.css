@@ -345,6 +345,11 @@ body {
 .fb-regrade-btn { align-self: flex-end; background: rgba(59,130,246,.2); border: 1px solid rgba(59,130,246,.5); border-radius: 6px; color: #93c5fd; font-size: 12px; font-weight: 700; padding: 6px 14px; cursor: pointer; transition: background .15s; }
 .fb-regrade-btn:hover:not(:disabled) { background: rgba(59,130,246,.35); }
 .fb-regrade-btn:disabled { opacity: .5; cursor: not-allowed; }
+.fb-hint-area { margin-top: 4px; }
+.fb-hint-btn { background: rgba(251,191,36,.15); border: 1px solid rgba(251,191,36,.4); border-radius: 6px; color: #fbbf24; font-size: 12px; font-weight: 700; padding: 6px 14px; cursor: pointer; transition: background .15s; }
+.fb-hint-btn:hover:not(:disabled) { background: rgba(251,191,36,.28); }
+.fb-hint-btn:disabled { opacity: .5; cursor: not-allowed; }
+.fb-hint-text { background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.35); border-radius: 6px; padding: 8px 11px; font-size: 13px; color: #fde68a; line-height: 1.65; }
 
 /* ===== 強みパネル ===== */
 .strengths-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
